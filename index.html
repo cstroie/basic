@@ -346,6 +346,11 @@ NEW</div>
                 input.focus();
             }
 
+            /**
+             * Process user input command
+             * - If command starts with a number, treat as program line
+             * - Otherwise execute as immediate command
+             */
             processCommand() {
                 let command = this.commandInput.value.trim();
                 
@@ -376,7 +381,12 @@ NEW</div>
                 this.updateMemory();
             }
 
-            // Convert only BASIC keywords and commands to uppercase
+            /**
+             * Convert only BASIC keywords and commands to uppercase
+             * Preserves case of arguments and string literals
+             * @param {string} command - The command to process
+             * @returns {string} - Command with keywords in uppercase
+             */
             convertKeywordsToUppercase(command) {
                 // Split command into tokens
                 const tokens = command.split(' ');
@@ -404,6 +414,10 @@ NEW</div>
                 return tokens.join(' ');
             }
 
+            /**
+             * Execute an immediate command (not part of a program)
+             * @param {string} command - The command to execute
+             */
             executeCommand(command) {
                 // Extract command part and argument part
                 let cmdPart = command;
@@ -445,6 +459,11 @@ NEW</div>
                 this.status.textContent = 'READY';
             }
 
+            /**
+             * Execute PRINT command
+             * Handles string literals and variable references
+             * @param {string} expression - The expression to print
+             */
             executePrint(expression) {
                 // Simple print - handle strings and variables
                 let output = '';
@@ -467,6 +486,10 @@ NEW</div>
                 this.printToScreen(output);
             }
 
+            /**
+             * Execute LET command to assign values to variables
+             * @param {string} expression - The assignment expression (e.g., "A = 10")
+             */
             executeLet(expression) {
                 // Simple LET implementation
                 const parts = expression.split('=');
@@ -500,6 +523,10 @@ NEW</div>
                 this.printToScreen("NEW");
             }
 
+            /**
+             * Save program to localStorage with case-insensitive name
+             * @param {string} name - Program name (defaults to 'default')
+             */
             saveProgram(name = 'default') {
                 try {
                     const data = {
@@ -514,6 +541,10 @@ NEW</div>
                 }
             }
 
+            /**
+             * Load program from localStorage with case-insensitive name
+             * @param {string} name - Program name (defaults to 'default')
+             */
             loadProgram(name = 'default') {
                 try {
                     const lowerName = name.toLowerCase();
@@ -544,6 +575,10 @@ NEW</div>
                 }
             }
 
+            /**
+             * Run the stored program line by line
+             * Executes each line with a small delay for demonstration
+             */
             runProgram() {
                 this.status.textContent = 'RUNNING';
                 this.printToScreen("RUN");
@@ -571,6 +606,11 @@ NEW</div>
                 executeLine();
             }
 
+            /**
+             * Execute a single line of a stored program
+             * @param {string} lineNum - Line number
+             * @param {string} command - Command to execute
+             */
             executeProgramLine(lineNum, command) {
                 // Extract command part and argument part
                 let cmdPart = command;
