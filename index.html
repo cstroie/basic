@@ -355,18 +355,19 @@ NEW</div>
                 const end = input.selectionEnd;
                 const value = input.value;
                 
-                // Insert the key at cursor position
-                input.value = value.substring(0, start) + key + ' ' + value.substring(end);
+                // Insert the key at cursor position (convert to uppercase)
+                const upperKey = key.toUpperCase();
+                input.value = value.substring(0, start) + upperKey + ' ' + value.substring(end);
                 
                 // Move cursor to after the inserted text
-                const newPos = start + key.length + 1;
+                const newPos = start + upperKey.length + 1;
                 input.setSelectionRange(newPos, newPos);
                 input.focus();
             }
 
             processCommand() {
                 const lineNum = this.lineNumber.value.trim();
-                const command = this.commandInput.value.trim();
+                const command = this.commandInput.value.trim().toUpperCase();
                 
                 if (lineNum && command) {
                     // Store as program line
