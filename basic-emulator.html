@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BASIC Emulator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        header {
+            text-align: center;
+            padding: 10px 0;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            font-size: 2rem;
+            color: #3498db;
+            text-shadow: 0 0 5px rgba(52, 152, 219, 0.5);
+        }
+
+        .emulator-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        @media (min-width: 768px) {
+            .emulator-container {
+                flex-direction: row;
+            }
+        }
+
+        .screen-container {
+            flex: 1;
+            background-color: #1a1a1a;
+            border: 3px solid #7f8c8d;
+            border-radius: 5px;
+            padding: 15px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+        }
+
+        #screen {
+            background-color: #000;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            line-height: 1.4;
+            padding: 10px;
+            height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .keyboard-container {
+            flex: 1;
+            background-color: #34495e;
+            border: 3px solid #7f8c8d;
+            border-radius: 5px;
+            padding: 15px;
+        }
+
+        .input-area {
+            display: flex;
+            margin-bottom: 15px;
+            gap: 10px;
+        }
+
+        #lineNumber {
+            width: 60px;
+            background-color: #2c3e50;
+            border: 1px solid #7f8c8d;
+            color: #ecf0f1;
+            padding: 8px;
+            font-family: 'Courier New', monospace;
+        }
+
+        #commandInput {
+            flex: 1;
+            background-color: #2c3e50;
+            border: 1px solid #7f8c8d;
+            color: #ecf0f1;
+            padding: 8px;
+            font-family: 'Courier New', monospace;
+        }
+
+        #runButton, #clearButton {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+        }
+
+        #runButton:hover, #clearButton:hover {
+            background-color: #2980b9;
+        }
+
+        .keyboard {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+        }
+
+        .key {
+            background-color: #7f8c8d;
+            color: #000;
+            border: none;
+            padding: 10px 5px;
+            text-align: center;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 3px;
+            font-size: 0.9rem;
+        }
+
+        .key:hover {
+            background-color: #95a5a6;
+        }
+
+        .key.special {
+            background-color: #e74c3c;
+            color: white;
+        }
+
+        .key.special:hover {
+            background-color: #c0392b;
+        }
+
+        .key.function {
+            background-color: #f39c12;
+            color: white;
+        }
+
+        .key.function:hover {
+            background-color: #d35400;
+        }
+
+        .status-bar {
+            margin-top: 15px;
+            padding: 10px;
+            background-color: #2c3e50;
+            border: 1px solid #7f8c8d;
+            font-size: 0.9rem;
+        }
+
+        .examples {
+            margin-top: 20px;
+            background-color: #34495e;
+            padding: 15px;
+            border-radius: 5px;
+        }
+
+        .examples h3 {
+            margin-bottom: 10px;
+            color: #3498db;
+        }
+
+        .examples ul {
+            padding-left: 20px;
+        }
+
+        .examples li {
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 20px;
+            padding: 10px;
+            font-size: 0.8rem;
+            color: #bdc3c7;
+        }
+
+        /* Mobile optimizations */
+        @media (max-width: 767px) {
+            .keyboard {
+                grid-template-columns: repeat(4, 1fr);
+            }
+            
+            #screen {
+                font-size: 14px;
+                height: 250px;
+            }
+            
+            h1 {
+                font-size: 1.5rem;
+            }
+            
+            .key {
+                padding: 8px 3px;
+                font-size: 0.8rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .keyboard {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            
+            .input-area {
+                flex-direction: column;
+            }
+            
+            #lineNumber {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>BASIC EMULATOR</h1>
+            <p>Emulating classic 8-bit computers</p>
+        </header>
+
+        <div class="emulator-container">
+            <div class="screen-container">
+                <div id="screen">READY.
+NEW</div>
+                <div class="status-bar">
+                    <span id="status">READY</span> | <span id="memory">MEM: 1000</span>
+                </div>
+            </div>
+
+            <div class="keyboard-container">
+                <div class="input-area">
+                    <input type="number" id="lineNumber" placeholder="10" min="0">
+                    <input type="text" id="commandInput" placeholder="Enter BASIC command">
+                    <button id="runButton">RUN</button>
+                    <button id="clearButton">CLR</button>
+                </div>
+
+                <div class="keyboard">
+                    <button class="key" data-key="PRINT">PRINT</button>
+                    <button class="key" data-key="INPUT">INPUT</button>
+                    <button class="key" data-key="LET">LET</button>
+                    <button class="key" data-key="GOTO">GOTO</button>
+                    <button class="key" data-key="IF">IF</button>
+                    <button class="key" data-key="THEN">THEN</button>
+                    <button class="key" data-key="FOR">FOR</button>
+                    <button class="key" data-key="TO">TO</button>
+                    <button class="key" data-key="STEP">STEP</button>
+                    <button class="key" data-key="NEXT">NEXT</button>
+                    <button class="key" data-key="REM">REM</button>
+                    <button class="key" data-key="END">END</button>
+                    <button class="key" data-key="LIST">LIST</button>
+                    <button class="key" data-key="NEW">NEW</button>
+                    <button class="key" data-key="RUN">RUN</button>
+                    <button class="key special" data-key="CLS">CLS</button>
+                    <button class="key special" data-key="CLR">CLR</button>
+                    <button class="key function" data-key="LOAD">LOAD</button>
+                    <button class="key function" data-key="SAVE">SAVE</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="examples">
+            <h3>Example Programs:</h3>
+            <ul>
+                <li>10 PRINT "HELLO WORLD"</li>
+                <li>20 FOR I = 1 TO 10</li>
+                <li>30 PRINT I</li>
+                <li>40 NEXT I</li>
+                <li>50 END</li>
+                <li>Then type RUN to execute</li>
+            </ul>
+        </div>
+
+        <footer>
+            <p>BASIC Emulator - Inspired by ZX Spectrum and Atari 8-bit computers</p>
+        </footer>
+    </div>
+
+    <script>
+        class BasicEmulator {
+            constructor() {
+                this.program = {};
+                this.variables = {};
+                this.screen = document.getElementById('screen');
+                this.status = document.getElementById('status');
+                this.memory = document.getElementById('memory');
+                this.lineNumber = document.getElementById('lineNumber');
+                this.commandInput = document.getElementById('commandInput');
+                this.runButton = document.getElementById('runButton');
+                this.clearButton = document.getElementById('clearButton');
+                
+                this.setupEventListeners();
+                this.updateMemory();
+            }
+
+            setupEventListeners() {
+                // Run button
+                this.runButton.addEventListener('click', () => this.runProgram());
+                
+                // Clear button
+                this.clearButton.addEventListener('click', () => this.clearScreen());
+                
+                // Enter key in command input
+                this.commandInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        this.processCommand();
+                    }
+                });
+                
+                // Line number enter key
+                this.lineNumber.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        this.processCommand();
+                    }
+                });
+                
+                // Keyboard buttons
+                document.querySelectorAll('.key').forEach(button => {
+                    button.addEventListener('click', () => {
+                        const key = button.getAttribute('data-key');
+                        this.insertKey(key);
+                    });
+                });
+            }
+
+            insertKey(key) {
+                const input = this.commandInput;
+                const start = input.selectionStart;
+                const end = input.selectionEnd;
+                const value = input.value;
+                
+                // Insert the key at cursor position
+                input.value = value.substring(0, start) + key + ' ' + value.substring(end);
+                
+                // Move cursor to after the inserted text
+                const newPos = start + key.length + 1;
+                input.setSelectionRange(newPos, newPos);
+                input.focus();
+            }
+
+            processCommand() {
+                const lineNum = this.lineNumber.value.trim();
+                const command = this.commandInput.value.trim();
+                
+                if (lineNum && command) {
+                    // Store as program line
+                    this.program[parseInt(lineNum)] = command;
+                    this.printToScreen(`${lineNum} ${command}`);
+                    this.lineNumber.value = '';
+                    this.commandInput.value = '';
+                } else if (command) {
+                    // Execute immediate command
+                    this.executeCommand(command);
+                    this.commandInput.value = '';
+                }
+                
+                this.updateMemory();
+            }
+
+            executeCommand(command) {
+                const upperCommand = command.toUpperCase();
+                
+                if (upperCommand === 'NEW') {
+                    this.newProgram();
+                } else if (upperCommand === 'LIST') {
+                    this.listProgram();
+                } else if (upperCommand === 'RUN') {
+                    this.runProgram();
+                } else if (upperCommand === 'CLS' || upperCommand === 'CLEAR') {
+                    this.clearScreen();
+                } else if (upperCommand.startsWith('PRINT ')) {
+                    this.executePrint(upperCommand.substring(6));
+                } else if (upperCommand.startsWith('LET ')) {
+                    this.executeLet(upperCommand.substring(4));
+                } else if (upperCommand.startsWith('REM ')) {
+                    // Comment - do nothing
+                } else if (upperCommand === 'END') {
+                    this.printToScreen("END");
+                } else {
+                    this.printToScreen(`?SYNTAX ERROR`);
+                }
+                
+                this.status.textContent = 'READY';
+            }
+
+            executePrint(expression) {
+                // Simple print - handle strings and variables
+                let output = '';
+                
+                if (expression.startsWith('"') && expression.endsWith('"')) {
+                    // String literal
+                    output = expression.substring(1, expression.length - 1);
+                } else {
+                    // Variable or number
+                    const varName = expression.trim();
+                    if (this.variables[varName] !== undefined) {
+                        output = this.variables[varName];
+                    } else if (!isNaN(varName)) {
+                        output = varName;
+                    } else {
+                        output = `?VARIABLE NOT DEFINED`;
+                    }
+                }
+                
+                this.printToScreen(output);
+            }
+
+            executeLet(expression) {
+                // Simple LET implementation
+                const parts = expression.split('=');
+                if (parts.length === 2) {
+                    const varName = parts[0].trim();
+                    const value = parts[1].trim();
+                    
+                    // Try to evaluate value
+                    if (value.startsWith('"') && value.endsWith('"')) {
+                        // String
+                        this.variables[varName] = value.substring(1, value.length - 1);
+                    } else if (!isNaN(value)) {
+                        // Number
+                        this.variables[varName] = parseFloat(value);
+                    } else if (this.variables[value] !== undefined) {
+                        // Variable reference
+                        this.variables[varName] = this.variables[value];
+                    } else {
+                        this.printToScreen(`?SYNTAX ERROR`);
+                        return;
+                    }
+                } else {
+                    this.printToScreen(`?SYNTAX ERROR`);
+                }
+            }
+
+            newProgram() {
+                this.program = {};
+                this.variables = {};
+                this.clearScreen();
+                this.printToScreen("NEW");
+            }
+
+            listProgram() {
+                const lines = Object.keys(this.program)
+                    .sort((a, b) => parseInt(a) - parseInt(b))
+                    .map(key => `${key} ${this.program[key]}`);
+                
+                if (lines.length > 0) {
+                    lines.forEach(line => this.printToScreen(line));
+                } else {
+                    this.printToScreen("(EMPTY)");
+                }
+            }
+
+            runProgram() {
+                this.status.textContent = 'RUNNING';
+                this.printToScreen("RUN");
+                
+                const sortedLines = Object.keys(this.program)
+                    .sort((a, b) => parseInt(a) - parseInt(b));
+                
+                let i = 0;
+                const executeLine = () => {
+                    if (i >= sortedLines.length) {
+                        this.status.textContent = 'READY';
+                        this.printToScreen("READY.");
+                        return;
+                    }
+                    
+                    const lineNum = sortedLines[i];
+                    const command = this.program[lineNum];
+                    this.executeProgramLine(lineNum, command);
+                    i++;
+                    
+                    // For demonstration purposes, we'll add a small delay
+                    setTimeout(executeLine, 10);
+                };
+                
+                executeLine();
+            }
+
+            executeProgramLine(lineNum, command) {
+                const upperCommand = command.toUpperCase();
+                
+                if (upperCommand.startsWith('PRINT ')) {
+                    this.executePrint(upperCommand.substring(6));
+                } else if (upperCommand.startsWith('LET ')) {
+                    this.executeLet(upperCommand.substring(4));
+                } else if (upperCommand.startsWith('FOR ')) {
+                    this.executeFor(upperCommand.substring(4), lineNum);
+                } else if (upperCommand === 'NEXT') {
+                    this.executeNext();
+                } else if (upperCommand.startsWith('REM ')) {
+                    // Comment - do nothing
+                } else if (upperCommand.startsWith('GOTO ')) {
+                    this.executeGoto(upperCommand.substring(5));
+                } else if (upperCommand.startsWith('IF ')) {
+                    this.executeIf(upperCommand.substring(3));
+                } else if (upperCommand === 'END') {
+                    this.printToScreen("END");
+                    this.status.textContent = 'READY';
+                } else {
+                    this.printToScreen(`?SYNTAX ERROR IN LINE ${lineNum}`);
+                }
+            }
+
+            executeFor(expression, lineNum) {
+                // Simplified FOR implementation
+                const parts = expression.split(' TO ');
+                if (parts.length === 2) {
+                    const varPart = parts[0].trim();
+                    const toValue = parseFloat(parts[1]);
+                    
+                    if (varPart.startsWith('LET ')) {
+                        this.executeLet(varPart.substring(4));
+                    }
+                }
+            }
+
+            executeNext() {
+                // Simplified NEXT implementation
+            }
+
+            executeGoto(lineNum) {
+                // Simplified GOTO implementation
+                this.printToScreen(`GOTO ${lineNum} (NOT IMPLEMENTED IN THIS DEMO)`);
+            }
+
+            executeIf(expression) {
+                // Simplified IF implementation
+                this.printToScreen(`IF ${expression} (NOT IMPLEMENTED IN THIS DEMO)`);
+            }
+
+            printToScreen(text) {
+                this.screen.textContent += '\n' + text;
+                this.screen.scrollTop = this.screen.scrollHeight;
+            }
+
+            clearScreen() {
+                this.screen.textContent = 'READY.';
+            }
+
+            updateMemory() {
+                const programSize = JSON.stringify(this.program).length;
+                const varSize = JSON.stringify(this.variables).length;
+                const total = programSize + varSize;
+                this.memory.textContent = `MEM: ${1000 - total}`;
+            }
+        }
+
+        // Initialize emulator when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            const emulator = new BasicEmulator();
+        });
+    </script>
+</body>
+</html>
