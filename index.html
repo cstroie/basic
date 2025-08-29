@@ -366,13 +366,24 @@ NEW</div>
 
             processCommand() {
                 const lineNum = this.lineNumber.value.trim();
-                const command = this.commandInput.value.trim();
+                let command = this.commandInput.value.trim();
                 
-                if (lineNum && command) {
+                // Check if command starts with a line number
+                let actualLineNum = lineNum;
+                if (!lineNum && command) {
+                    // Extract line number from the beginning of the command
+                    const match = command.match(/^(\d+)\s+(.*)/);
+                    if (match) {
+                        actualLineNum = match[1];
+                        command = match[2];
+                    }
+                }
+                
+                if (actualLineNum && command) {
                     // Store as program line (convert only keywords to uppercase)
                     const upperCommand = this.convertKeywordsToUppercase(command);
-                    this.program[parseInt(lineNum)] = upperCommand;
-                    this.printToScreen(`${lineNum} ${upperCommand}`);
+                    this.program[parseInt(actualLineNum)] = upperCommand;
+                    this.printToScreen(`${actualLineNum} ${upperCommand}`);
                     this.lineNumber.value = '';
                     this.commandInput.value = '';
                 } else if (command) {
