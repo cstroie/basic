@@ -399,6 +399,14 @@ NEW</div>
                     this.executePrint(upperCommand.substring(6));
                 } else if (upperCommand.startsWith('LET ')) {
                     this.executeLet(upperCommand.substring(4));
+                } else if (upperCommand.startsWith('SAVE ')) {
+                    this.saveProgram(upperCommand.substring(5));
+                } else if (upperCommand === 'SAVE') {
+                    this.saveProgram();
+                } else if (upperCommand.startsWith('LOAD ')) {
+                    this.loadProgram(upperCommand.substring(5));
+                } else if (upperCommand === 'LOAD') {
+                    this.loadProgram();
                 } else if (upperCommand.startsWith('REM ')) {
                     // Comment - do nothing
                 } else if (upperCommand === 'END') {
@@ -463,6 +471,36 @@ NEW</div>
                 this.variables = {};
                 this.clearScreen();
                 this.printToScreen("NEW");
+            }
+
+            saveProgram(name = 'default') {
+                try {
+                    const data = {
+                        program: this.program,
+                        variables: this.variables
+                    };
+                    localStorage.setItem(`basic_program_${name}`, JSON.stringify(data));
+                    this.printToScreen(`PROGRAM SAVED AS "${name}"`);
+                } catch (e) {
+                    this.printToScreen(`?SAVE ERROR: ${e.message}`);
+                }
+            }
+
+            loadProgram(name = 'default') {
+                try {
+                    const data = localStorage.getItem(`basic_program_${name}`);
+                    if (data) {
+                        const parsed = JSON.parse(data);
+                        this.program = parsed.program || {};
+                        this.variables = parsed.variables || {};
+                        this.printToScreen(`PROGRAM "${name}" LOADED`);
+                        this.updateMemory();
+                    } else {
+                        this.printToScreen(`?PROGRAM "${name}" NOT FOUND`);
+                    }
+                } catch (e) {
+                    this.printToScreen(`?LOAD ERROR: ${e.message}`);
+                }
             }
 
             listProgram() {
