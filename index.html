@@ -526,7 +526,8 @@ NEW</div>
                         program: this.program,
                         variables: this.variables
                     };
-                    localStorage.setItem(`basic_program_${name}`, JSON.stringify(data));
+                    const lowerName = name.toLowerCase();
+                    localStorage.setItem(`basic_program_${lowerName}`, JSON.stringify(data));
                     this.printToScreen(`PROGRAM SAVED AS "${name}"`);
                 } catch (e) {
                     this.printToScreen(`?SAVE ERROR: ${e.message}`);
@@ -535,7 +536,8 @@ NEW</div>
 
             loadProgram(name = 'default') {
                 try {
-                    const data = localStorage.getItem(`basic_program_${name}`);
+                    const lowerName = name.toLowerCase();
+                    const data = localStorage.getItem(`basic_program_${lowerName}`);
                     if (data) {
                         const parsed = JSON.parse(data);
                         this.program = parsed.program || {};
