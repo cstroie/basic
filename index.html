@@ -253,6 +253,7 @@ NEW</div>
                     <select id="examplePrograms">
                         <option value="">Load Example Program</option>
                         <option value="helloworld">Hello World</option>
+                        <option value="primes">First 10 Primes</option>
                     </select>
                 </div>
 
@@ -317,6 +318,20 @@ NEW</div>
                     helloworld: {
                         10: 'PRINT "HELLO WORLD"',
                         20: 'END'
+                    },
+                    primes: {
+                        10: 'REM CALCULATE FIRST 10 PRIME NUMBERS',
+                        20: 'LET N = 0',
+                        30: 'LET CANDIDATE = 2',
+                        40: 'IF N >= 10 THEN GOTO 120',
+                        50: 'LET ISPRIME = 1',
+                        60: 'LET DIVISOR = 2',
+                        70: 'IF DIVISOR * DIVISOR > CANDIDATE THEN GOTO 100',
+                        80: 'IF CANDIDATE / DIVISOR = INT(CANDIDATE / DIVISOR) THEN LET ISPRIME = 0',
+                        90: 'LET DIVISOR = DIVISOR + 1 : GOTO 70',
+                        100: 'IF ISPRIME = 1 THEN PRINT CANDIDATE : LET N = N + 1',
+                        110: 'LET CANDIDATE = CANDIDATE + 1 : GOTO 40',
+                        120: 'END'
                     }
                 };
                 
