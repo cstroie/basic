@@ -524,49 +524,71 @@ NEW</div>
 
             /**
              * Execute PRINT command
-             * Handles string literals and variable references
-             * @param {string} expression - The expression to print
-             */
-            /**
-             * Execute PRINT command
-             * Handles string literals, variables, expressions, and comma-separated lists
+             * Handles string literals, variables, expressions, and semicolon/comma-separated lists
              * @param {string} expression - The expression to print
              */
             executePrint(expression) {
-                // Handle comma-separated expressions
-                const parts = expression.split(',');
+                // Handle semicolon and comma-separated expressions
+                // Semicolon concatenates without spaces, comma adds space
                 let output = '';
+                let i = 0;
                 
-                for (let i = 0; i < parts.length; i++) {
-                    const part = parts[i].trim();
-                    
-                    if (part.startsWith('"') && part.endsWith('"')) {
-                        // String literal - preserve case
-                        output += part.substring(1, part.length - 1);
-                    } else if (part === '') {
-                        // Empty part (from trailing comma)
-                        output += ' ';
-                    } else {
-                        // Try to evaluate as expression first
-                        const result = this.evaluateExpression(part);
-                        if (result !== null) {
-                            output += result;
-                        } else {
-                            // Variable or number
-                            const varName = part.toUpperCase(); // Variables should be uppercase
-                            if (this.variables[varName] !== undefined) {
-                                output += this.variables[varName];
-                            } else if (!isNaN(part)) {
-                                output += part;
-                            } else {
-                                output += `?VARIABLE NOT DEFINED`;
-                            }
-                        }
+                while (i < expression.length) {
+                    // Skip whitespace
+                    while (i < expression.length && expression[i] === ' ') {
+                        i++;
                     }
                     
-                    // Add space between comma-separated parts
-                    if (i < parts.length - 1) {
-                        output += ' ';
+                    if (i >= expression.length) break;
+                    
+                    // Check for separator at current position
+                    if (expression[i] === ',' || expression[i] === ';') {
+                        const separator = expression[i];
+                        i++;
+                        
+                        // Add appropriate spacing
+                        if (separator === ',') {
+                            output += ' ';
+                        }
+                        continue;
+                    }
+                    
+                    // Parse a field (string literal or expression)
+                    if (expression[i] === '"') {
+                        // String literal
+                        i++; // Skip opening quote
+                        const start = i;
+                        while (i < expression.length && expression[i] !== '"') {
+                            i++;
+                        }
+                        const strValue = expression.substring(start, i);
+                        output += strValue;
+                        if (i < expression.length) i++; // Skip closing quote
+                    } else {
+                        // Expression (could be variable or arithmetic)
+                        const start = i;
+                        while (i < expression.length && expression[i] !== ',' && expression[i] !== ';') {
+                            i++;
+                        }
+                        const expr = expression.substring(start, i).trim();
+                        
+                        if (expr) {
+                            // Try to evaluate as expression first
+                            const result = this.evaluateExpression(expr);
+                            if (result !== null) {
+                                output += result;
+                            } else {
+                                // Variable or number
+                                const varName = expr.toUpperCase(); // Variables should be uppercase
+                                if (this.variables[varName] !== undefined) {
+                                    output += this.variables[varName];
+                                } else if (!isNaN(expr)) {
+                                    output += expr;
+                                } else {
+                                    output += `?VARIABLE NOT DEFINED`;
+                                }
+                            }
+                        }
                     }
                 }
                 
