@@ -248,6 +248,8 @@ NEW</div>
                     <input type="text" id="commandInput" placeholder="Enter BASIC command">
                     <button id="runButton">RUN</button>
                     <button id="clearButton">CLR</button>
+                    <button id="saveFileButton">SAVE FILE</button>
+                    <button id="loadFileButton">LOAD FILE</button>
                 </div>
 
                 <div class="keyboard">
@@ -302,6 +304,8 @@ NEW</div>
                 this.commandInput = document.getElementById('commandInput');
                 this.runButton = document.getElementById('runButton');
                 this.clearButton = document.getElementById('clearButton');
+                this.saveFileButton = document.getElementById('saveFileButton');
+                this.loadFileButton = document.getElementById('loadFileButton');
                 
                 this.setupEventListeners();
                 this.updateMemory();
@@ -313,6 +317,12 @@ NEW</div>
                 
                 // Clear button
                 this.clearButton.addEventListener('click', () => this.clearScreen());
+                
+                // Save file button
+                this.saveFileButton.addEventListener('click', () => this.saveProgramToFile());
+                
+                // Load file button
+                this.loadFileButton.addEventListener('click', () => this.loadProgramFromFile());
                 
                 // Enter key in command input
                 this.commandInput.addEventListener('keypress', (e) => {
@@ -950,6 +960,68 @@ NEW</div>
 
             clearScreen() {
                 this.screen.textContent = 'READY.';
+            }
+
+            /**
+             * Save the current program to a local file
+             */
+            saveProgramToFile() {
+                try {
+                    const data = {
+                        program: this.program,
+                        variables: this.variables
+                    };
+                    
+                    const json = JSON.stringify(data, null, 2);
+                    const blob = new Blob([json], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'basic_program.json';
+                    document.body.appendChild(a);
+                    a.click();
+                    
+                    // Clean up
+                    setTimeout(() => {
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                    }, 100);
+                    
+                    this.printToScreen("PROGRAM SAVED TO FILE");
+                } catch (e) {
+                    this.printToScreen(`?SAVE ERROR: ${e.message}`);
+                }
+            }
+
+            /**
+             * Load a program from a local file
+             */
+            loadProgramFromFile() {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.json';
+                
+                input.onchange = (event) => {
+                    const file = event.target.files[0];
+                    if (!file) return;
+                    
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const data = JSON.parse(e.target.result);
+                            this.program = data.program || {};
+                            this.variables = data.variables || {};
+                            this.printToScreen("PROGRAM LOADED FROM FILE");
+                            this.updateMemory();
+                        } catch (err) {
+                            this.printToScreen(`?LOAD ERROR: ${err.message}`);
+                        }
+                    };
+                    reader.readAsText(file);
+                };
+                
+                input.click();
             }
 
             updateMemory() {
