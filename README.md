@@ -1,6 +1,6 @@
 # BASIC Emulator
 
-A simple text-based emulator for classic 8-bit computers.
+A simple text-based emulator for classic 8-bit computers running entirely in the browser.
 
 ## Features
 
@@ -9,37 +9,17 @@ A simple text-based emulator for classic 8-bit computers.
 - Simple FOR and NEXT loops with basic conditionals.
 - Basic error handling and syntax checking.
 
-## Installation
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/yourusername/basic-emulator.git
-   ```
-
-2. Navigate to the project directory:
-   ```bash
-   cd basic-emulator
-   ```
-
-3. Install dependencies (if any):
-   ```bash
-   npm install
-   ```
-
-4. Run the emulator:
-   ```bash
-   python app.py
-   ```
-
 ## Usage
 
-1. Open a web browser and navigate to `http://localhost:5000` to start the emulator.
+1. Open `index.html` directly in a web browser to start the emulator.
 
 2. Type BASIC commands in the input field and press Enter to execute them.
 
-3. Use the keyboard to interact with the emulator.
+3. Use the on-screen keyboard or physical keyboard to interact with the emulator.
 
-4. Save your programs using the "SAVE" command and load them using the "LOAD" command.
+4. Save your programs using the "SAVE" button or command and load them using the "LOAD" button or command.
+
+Note: This emulator runs entirely in your browser and does not require a server or Python installation.
 
 ## Contributing
 
@@ -52,4 +32,3 @@ A simple text-based emulator for classic 8-bit computers.
 ## License
 
 MIT License
-```
