@@ -324,7 +324,7 @@ NEW</div>
                         10: 'REM CALCULATE FIRST 10 PRIME NUMBERS',
                         20: 'LET N = 0',
                         30: 'LET C = 2',
-                        40: 'IF N >= 10 THEN GOTO 130',
+                        40: 'IF N >= 10 THEN GOTO 140',
                         50: 'LET P = 1',
                         60: 'LET D = 2',
                         70: 'IF D * D > C THEN GOTO 110',
@@ -342,13 +342,12 @@ NEW</div>
                         20: 'INPUT N',
                         30: 'LET F = 1',
                         40: 'LET I = 1',
-                        50: 'IF I > N THEN GOTO 100',
+                        50: 'IF I > N THEN GOTO 90',
                         60: 'LET F = F * I',
                         70: 'LET I = I + 1',
                         80: 'GOTO 50',
-                        90: 'GOTO 50',
-                        100: 'PRINT "FACTORIAL OF"; N; "IS"; F',
-                        110: 'END'
+                        90: 'PRINT "FACTORIAL OF"; N; "IS"; F',
+                        100: 'END'
                     }
                 };
                 
