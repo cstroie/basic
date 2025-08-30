@@ -1281,6 +1281,10 @@ NEW</div>
                 this.examplePrograms.selectedIndex = 0; // Reset dropdown
             }
 
+            /**
+             * Update memory display
+             * Shows available memory based on program and variable storage size
+             */
             updateMemory() {
                 const programSize = JSON.stringify(this.program).length;
                 const varSize = JSON.stringify(this.variables).length;

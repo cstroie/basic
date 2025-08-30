@@ -11,11 +11,11 @@ A simple text-based interpreter for classic 8-bit BASIC running entirely in the 
 
 ## Usage
 
-1. Open `index.html` directly in a web browser to start the emulator.
+1. Open `index.html` directly in a web browser to start the interpreter.
 
 2. Type BASIC commands in the input field and press Enter to execute them.
 
-3. Use the on-screen keyboard or physical keyboard to interact with the emulator.
+3. Use the on-screen keyboard or physical keyboard to interact with the interpreter.
 
 4. Save your programs using the "SAVE" button or command and load them using the "LOAD" button or command.
 
