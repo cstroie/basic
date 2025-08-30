@@ -969,6 +969,11 @@ NEW</div>
                 this.currentLineIndex = returnIndex;
             }
 
+            /**
+             * Execute IF command to handle conditional execution
+             * Evaluates a condition and executes the command if the condition is true
+             * @param {string} expression - The IF expression (e.g., "A = 5 THEN PRINT 'YES'")
+             */
             executeIf(expression) {
                 // Parse IF expression: condition THEN command
                 const thenIndex = expression.toUpperCase().indexOf(' THEN ');
