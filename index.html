@@ -343,13 +343,11 @@ NEW</div>
                         10: 'REM FACTORIAL CALCULATOR',
                         20: 'INPUT N',
                         30: 'LET F = 1',
-                        40: 'LET I = 1',
-                        50: 'IF I > N THEN GOTO 90',
-                        60: 'LET F = F * I',
-                        70: 'LET I = I + 1',
-                        80: 'GOTO 50',
-                        90: 'PRINT "FACTORIAL OF"; N; "IS"; F',
-                        100: 'END'
+                        40: 'FOR I = 1 TO N',
+                        50: 'LET F = F * I',
+                        60: 'NEXT I',
+                        70: 'PRINT "FACTORIAL OF"; N; "IS"; F',
+                        80: 'END'
                     }
                 };
                 
