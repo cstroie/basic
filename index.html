@@ -1002,31 +1002,65 @@ NEW</div>
             }
 
             /**
-             * Execute INPUT command to get user input
+             * Handle INPUT command with proper user input waiting
              * @param {string} expression - Variable name to store input
-             * @param {boolean} isProgram - Whether this is called from program execution
+             * @param {string} lineNum - Current line number
              */
-            executeInput(expression, isProgram = false) {
+            handleInputCommand(expression, lineNum) {
                 const varName = expression.trim().toUpperCase();
                 if (!varName) {
-                    this.printToScreen(`?SYNTAX ERROR`);
+                    this.printToScreen(`?SYNTAX ERROR IN LINE ${lineNum}`);
+                    this.currentLineIndex++;
+                    setTimeout(() => this.executeNextLine(), 10);
                     return;
                 }
                 
                 // Print input prompt
                 this.printToScreen(`?INPUT ${varName}`);
                 
-                // If called from immediate mode, handle synchronously
-                if (!isProgram) {
-                    // In immediate mode, we can't really wait for input
-                    // So we'll just assign a default value
-                    this.variables[varName] = 0;
-                    return;
-                }
+                // Create input field for user input
+                const inputField = document.createElement('input');
+                inputField.type = 'text';
+                inputField.style.width = '100px';
+                inputField.style.marginLeft = '10px';
+                inputField.style.backgroundColor = '#2c3e50';
+                inputField.style.color = '#ecf0f1';
+                inputField.style.border = '1px solid #7f8c8d';
+                inputField.style.fontFamily = 'Press Start 2P, cursive';
+                inputField.style.fontSize = '12px';
                 
-                // For program execution, we need to pause and wait for input
-                // This requires special handling in the execution flow
-                throw new Error('INPUT requires special program execution handling');
+                // Add input field to screen
+                const inputContainer = document.createElement('div');
+                inputContainer.style.display = 'flex';
+                inputContainer.style.alignItems = 'center';
+                inputContainer.appendChild(document.createTextNode('?INPUT ' + varName));
+                inputContainer.appendChild(inputField);
+                this.screen.appendChild(inputContainer);
+                this.screen.scrollTop = this.screen.scrollHeight;
+                
+                // Focus on input field
+                inputField.focus();
+                
+                // Handle input submission
+                inputField.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        const inputValue = inputField.value.trim();
+                        
+                        // Try to parse as number first, otherwise store as string
+                        if (!isNaN(inputValue) && inputValue !== '') {
+                            this.variables[varName] = parseFloat(inputValue);
+                        } else {
+                            this.variables[varName] = inputValue;
+                        }
+                        
+                        // Remove input field
+                        inputContainer.remove();
+                        
+                        // Continue program execution
+                        this.currentLineIndex++;
+                        setTimeout(() => this.executeNextLine(), 10);
+                    }
+                });
             }
 
             /**
