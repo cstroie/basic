@@ -697,15 +697,17 @@ NEW</div>
                 const lineNum = this.sortedLines[this.currentLineIndex];
                 const command = this.program[lineNum];
                 
-                this.executeProgramLine(lineNum, command);
+                const result = this.executeProgramLine(lineNum, command);
                 
-                // Only increment if no GOTO was executed
-                if (this.currentLineIndex === parseInt(this.sortedLines.indexOf(lineNum))) {
+                // Only increment if no GOTO was executed and no special handling
+                if (result !== false && this.currentLineIndex === parseInt(this.sortedLines.indexOf(lineNum))) {
                     this.currentLineIndex++;
                 }
                 
                 // For demonstration purposes, we'll add a small delay
-                setTimeout(() => this.executeNextLine(), 10);
+                if (result !== false) {
+                    setTimeout(() => this.executeNextLine(), 10);
+                }
             }
 
             /**
@@ -732,7 +734,9 @@ NEW</div>
                 } else if (upperCmd === 'LET') {
                     this.executeLet(argPart);
                 } else if (upperCmd === 'INPUT') {
-                    this.executeInput(argPart);
+                    // Handle INPUT with special async flow
+                    this.handleInputCommand(argPart, lineNum);
+                    return false; // Indicate special handling
                 } else if (upperCmd === 'FOR') {
                     this.executeFor(argPart, lineNum);
                 } else if (upperCmd === 'NEXT') {
@@ -1000,19 +1004,29 @@ NEW</div>
             /**
              * Execute INPUT command to get user input
              * @param {string} expression - Variable name to store input
+             * @param {boolean} isProgram - Whether this is called from program execution
              */
-            executeInput(expression) {
+            executeInput(expression, isProgram = false) {
                 const varName = expression.trim().toUpperCase();
                 if (!varName) {
                     this.printToScreen(`?SYNTAX ERROR`);
                     return;
                 }
                 
-                // For this implementation, we'll simulate input with a prompt
+                // Print input prompt
                 this.printToScreen(`?INPUT ${varName}`);
-                // In a real implementation, we'd wait for user input
-                // For now, we'll just assign a default value
-                this.variables[varName] = 0;
+                
+                // If called from immediate mode, handle synchronously
+                if (!isProgram) {
+                    // In immediate mode, we can't really wait for input
+                    // So we'll just assign a default value
+                    this.variables[varName] = 0;
+                    return;
+                }
+                
+                // For program execution, we need to pause and wait for input
+                // This requires special handling in the execution flow
+                throw new Error('INPUT requires special program execution handling');
             }
 
             /**
