@@ -248,8 +248,8 @@ NEW</div>
                     <input type="text" id="commandInput" placeholder="Enter BASIC command">
                     <button id="runButton">RUN</button>
                     <button id="clearButton">CLR</button>
-                    <button id="saveFileButton">SAVE FILE</button>
-                    <button id="loadFileButton">LOAD FILE</button>
+                    <button id="saveFileButton">SAVE</button>
+                    <button id="loadFileButton">LOAD</button>
                 </div>
 
                 <div class="keyboard">
@@ -967,18 +967,18 @@ NEW</div>
              */
             saveProgramToFile() {
                 try {
-                    const data = {
-                        program: this.program,
-                        variables: this.variables
-                    };
+                    // Convert program to plain text format
+                    const lines = Object.keys(this.program)
+                        .sort((a, b) => parseInt(a) - parseInt(b))
+                        .map(key => `${key} ${this.program[key]}`);
                     
-                    const json = JSON.stringify(data, null, 2);
-                    const blob = new Blob([json], { type: 'application/json' });
+                    const content = lines.join('\n');
+                    const blob = new Blob([content], { type: 'text/plain' });
                     const url = URL.createObjectURL(blob);
                     
                     const a = document.createElement('a');
                     a.href = url;
-                    a.download = 'basic_program.json';
+                    a.download = 'basic_program.bas';
                     document.body.appendChild(a);
                     a.click();
                     
@@ -1000,7 +1000,7 @@ NEW</div>
             loadProgramFromFile() {
                 const input = document.createElement('input');
                 input.type = 'file';
-                input.accept = '.json';
+                input.accept = '.bas';
                 
                 input.onchange = (event) => {
                     const file = event.target.files[0];
@@ -1009,9 +1009,27 @@ NEW</div>
                     const reader = new FileReader();
                     reader.onload = (e) => {
                         try {
-                            const data = JSON.parse(e.target.result);
-                            this.program = data.program || {};
-                            this.variables = data.variables || {};
+                            // Parse the BASIC program lines
+                            const content = e.target.result;
+                            const lines = content.split('\n');
+                            
+                            // Clear current program
+                            this.program = {};
+                            
+                            // Parse each line
+                            for (const line of lines) {
+                                const trimmedLine = line.trim();
+                                if (trimmedLine) {
+                                    // Extract line number and command
+                                    const match = trimmedLine.match(/^(\d+)\s+(.*)/);
+                                    if (match) {
+                                        const lineNum = parseInt(match[1]);
+                                        const command = match[2];
+                                        this.program[lineNum] = command;
+                                    }
+                                }
+                            }
+                            
                             this.printToScreen("PROGRAM LOADED FROM FILE");
                             this.updateMemory();
                         } catch (err) {
