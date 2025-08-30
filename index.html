@@ -482,6 +482,10 @@ NEW</div>
             printSyntaxError(lineNum = null) {
                 if (lineNum !== null) {
                     this.printToScreen(`?SYNTAX ERROR IN LINE ${lineNum}`);
+                } else if (this.status.textContent === 'RUNNING' && this.sortedLines && this.currentLineIndex < this.sortedLines.length) {
+                    // Use current line number when running a program
+                    const currentLineNum = this.sortedLines[this.currentLineIndex];
+                    this.printToScreen(`?SYNTAX ERROR IN LINE ${currentLineNum}`);
                 } else {
                     this.printToScreen(`?SYNTAX ERROR`);
                 }
