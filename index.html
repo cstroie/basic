@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BASIC Emulator</title>
+    <title>BASIC Interpreter</title>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
         * {
@@ -41,14 +41,14 @@
             text-shadow: 0 0 5px rgba(52, 152, 219, 0.5);
         }
 
-        .emulator-container {
+        .interpreter-container {
             display: flex;
             flex-direction: column;
             gap: 20px;
         }
 
         @media (min-width: 768px) {
-            .emulator-container {
+            .interpreter-container {
                 flex-direction: row;
             }
         }
@@ -230,11 +230,11 @@
 <body>
     <div class="container">
         <header>
-            <h1>BASIC EMULATOR</h1>
-            <p>Emulating classic 8-bit computers</p>
+            <h1>BASIC INTERPRETER</h1>
+            <p>Interpreting classic 8-bit BASIC</p>
         </header>
 
-        <div class="emulator-container">
+        <div class="interpreter-container">
             <div class="screen-container">
                 <div id="screen">READY.
 NEW</div>
@@ -297,12 +297,12 @@ NEW</div>
         </div>
 
         <footer>
-            <p>BASIC Emulator - Inspired by ZX Spectrum and Atari 8-bit computers</p>
+            <p>BASIC Interpreter - Inspired by ZX Spectrum and Atari 8-bit computers</p>
         </footer>
     </div>
 
     <script>
-        class BasicEmulator {
+        class BasicInterpreter {
             constructor() {
                 this.program = {};
                 this.variables = {};
@@ -1289,9 +1289,9 @@ NEW</div>
             }
         }
 
-        // Initialize emulator when page loads
+        // Initialize interpreter when page loads
         document.addEventListener('DOMContentLoaded', () => {
-            const emulator = new BasicEmulator();
+            const interpreter = new BasicInterpreter();
         });
     </script>
 </body>

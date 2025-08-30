@@ -1,6 +1,6 @@
-# BASIC Emulator
+# BASIC Interpreter
 
-A simple text-based emulator for classic 8-bit computers running entirely in the browser.
+A simple text-based interpreter for classic 8-bit BASIC running entirely in the browser.
 
 ## Features
 
@@ -19,7 +19,7 @@ A simple text-based emulator for classic 8-bit computers running entirely in the
 
 4. Save your programs using the "SAVE" button or command and load them using the "LOAD" button or command.
 
-Note: This emulator runs entirely in your browser and does not require a server or Python installation.
+Note: This interpreter runs entirely in your browser and does not require a server or Python installation.
 
 ## Contributing
 
