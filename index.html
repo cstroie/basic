@@ -846,9 +846,12 @@ NEW</div>
                     // Loop finished, remove from stack
                     this.loops.pop();
                 } else {
-                    // Jump back to FOR statement
-                    // In a real implementation, we'd jump to the line after the FOR
-                    // For this demo, we'll just continue normally
+                    // Jump back to the line after the FOR statement
+                    // Find the FOR statement line and jump to the next line
+                    const forLineIndex = this.lineMap[loop.lineNum];
+                    if (forLineIndex !== undefined && forLineIndex + 1 < this.sortedLines.length) {
+                        this.currentLineIndex = forLineIndex + 1;
+                    }
                 }
             }
 
