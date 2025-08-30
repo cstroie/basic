@@ -683,61 +683,47 @@ NEW</div>
                 // Remove spaces
                 expr = expr.replace(/\s+/g, '');
                 
-                // Simple expression evaluator for + and - operations
+                // Simple expression evaluator for +, -, *, / operations
                 // This is a basic implementation - a full parser would be more complex
                 try {
                     // Replace variables with their values
                     let processedExpr = expr;
+                    // Match variable names (letters followed by optional letters/digits)
                     const varRegex = /[A-Z][A-Z0-9]*/gi;
-                    let match;
-                    while ((match = varRegex.exec(expr)) !== null) {
-                        const varName = match[0].toUpperCase();
-                        if (this.variables[varName] !== undefined) {
-                            // Replace the variable with its value
-                            processedExpr = processedExpr.replace(new RegExp('\\b' + varName + '\\b', 'g'), this.variables[varName]);
-                        } else if (isNaN(varName)) {
-                            // Variable not defined
-                            return null;
+                    const matches = expr.match(varRegex) || [];
+                    
+                    // Replace each variable with its value
+                    for (const varName of matches) {
+                        const upperVarName = varName.toUpperCase();
+                        if (this.variables[upperVarName] !== undefined) {
+                            // Replace all instances of this variable with its value
+                            processedExpr = processedExpr.replace(
+                                new RegExp('\\b' + varName + '\\b', 'gi'), 
+                                this.variables[upperVarName]
+                            );
+                        } else {
+                            // Check if it's not a number (undefined variable)
+                            if (isNaN(varName)) {
+                                return null; // Variable not defined
+                            }
                         }
                     }
                     
-                    // Evaluate simple arithmetic (only + and - for now)
-                    // This is a very basic implementation
-                    const tokens = processedExpr.match(/(\d+\.?\d*|[+\-*/])/g);
-                    if (!tokens) {
-                        // Just a number or variable value
-                        const numValue = parseFloat(processedExpr);
-                        return isNaN(numValue) ? null : numValue;
-                    }
-                    
-                    let result = parseFloat(tokens[0]);
-                    if (isNaN(result)) return null;
-                    
-                    for (let i = 1; i < tokens.length; i += 2) {
-                        const operator = tokens[i];
-                        const operand = parseFloat(tokens[i + 1]);
-                        if (isNaN(operand)) return null;
+                    // Evaluate simple arithmetic
+                    // This is a very basic implementation using Function constructor
+                    // In a production environment, a proper parser would be better
+                    try {
+                        // Only allow numbers, operators, parentheses, and decimal points
+                        if (/[^0-9+\-*/.() ]/.test(processedExpr)) {
+                            return null; // Invalid characters
+                        }
                         
-                        switch (operator) {
-                            case '+':
-                                result += operand;
-                                break;
-                            case '-':
-                                result -= operand;
-                                break;
-                            case '*':
-                                result *= operand;
-                                break;
-                            case '/':
-                                if (operand === 0) return null; // Division by zero
-                                result /= operand;
-                                break;
-                            default:
-                                return null; // Unsupported operator
-                        }
+                        // Evaluate the expression
+                        const result = Function('"use strict"; return (' + processedExpr + ')')();
+                        return typeof result === 'number' && !isNaN(result) ? result : null;
+                    } catch (e) {
+                        return null; // Invalid expression
                     }
-                    
-                    return result;
                 } catch (e) {
                     return null;
                 }
