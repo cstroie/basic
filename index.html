@@ -817,7 +817,7 @@ NEW</div>
                 // Parse FOR expression: variable = start TO end [STEP step]
                 const toIndex = expression.toUpperCase().indexOf(' TO ');
                 if (toIndex === -1) {
-                    this.printSyntaxError();
+                    this.printSyntaxError(lineNum);
                     return;
                 }
                 
@@ -837,7 +837,7 @@ NEW</div>
                 // Parse variable assignment
                 const equalsIndex = varPart.indexOf('=');
                 if (equalsIndex === -1) {
-                    this.printSyntaxError();
+                    this.printSyntaxError(lineNum);
                     return;
                 }
                 
