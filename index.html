@@ -666,39 +666,42 @@ NEW</div>
                 this.status.textContent = 'RUNNING';
                 this.printToScreen("RUN");
                 
-                const sortedLines = Object.keys(this.program)
+                // Initialize program execution state
+                this.sortedLines = Object.keys(this.program)
                     .sort((a, b) => parseInt(a) - parseInt(b));
                 
                 // Create a map of line numbers to indices for quick lookup
-                const lineMap = {};
-                sortedLines.forEach((lineNum, index) => {
-                    lineMap[parseInt(lineNum)] = index;
+                this.lineMap = {};
+                this.sortedLines.forEach((lineNum, index) => {
+                    this.lineMap[parseInt(lineNum)] = index;
                 });
                 
-                let i = 0;
-                const executeLine = () => {
-                    if (i >= sortedLines.length) {
-                        this.status.textContent = 'READY';
-                        this.printToScreen("READY.");
-                        return;
-                    }
-                    
-                    const lineNum = sortedLines[i];
-                    const command = this.program[lineNum];
-                    
-                    // Store current line number for GOTO reference
-                    this.currentLineIndex = i;
-                    this.currentLineMap = lineMap;
-                    this.currentSortedLines = sortedLines;
-                    
-                    this.executeProgramLine(lineNum, command);
-                    i++;
-                    
-                    // For demonstration purposes, we'll add a small delay
-                    setTimeout(executeLine, 10);
-                };
+                this.currentLineIndex = 0;
+                this.executeNextLine();
+            }
+
+            /**
+             * Execute the next line in the program
+             */
+            executeNextLine() {
+                if (this.currentLineIndex >= this.sortedLines.length) {
+                    this.status.textContent = 'READY';
+                    this.printToScreen("READY.");
+                    return;
+                }
                 
-                executeLine();
+                const lineNum = this.sortedLines[this.currentLineIndex];
+                const command = this.program[lineNum];
+                
+                this.executeProgramLine(lineNum, command);
+                
+                // Only increment if no GOTO was executed
+                if (this.currentLineIndex === parseInt(this.sortedLines.indexOf(lineNum))) {
+                    this.currentLineIndex++;
+                }
+                
+                // For demonstration purposes, we'll add a small delay
+                setTimeout(() => this.executeNextLine(), 10);
             }
 
             /**
@@ -851,14 +854,13 @@ NEW</div>
                 }
                 
                 // Check if line exists
-                if (this.program[targetLine] === undefined) {
+                if (this.lineMap[targetLine] === undefined) {
                     this.printToScreen(`?UNDEFINED LINE NUMBER`);
                     return;
                 }
                 
-                // In a real implementation, we'd jump to this line
-                // For this demo, we'll just acknowledge the command
-                this.printToScreen(`GOTO ${targetLine} (JUMP TO LINE ${targetLine})`);
+                // Set the current line index to jump to the target line
+                this.currentLineIndex = this.lineMap[targetLine];
             }
 
             executeIf(expression) {
