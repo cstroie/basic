@@ -505,6 +505,8 @@ NEW</div>
                     this.saveProgram(argPart || 'default');
                 } else if (upperCmd === 'LOAD') {
                     this.loadProgram(argPart || 'default');
+                } else if (upperCmd === 'INPUT') {
+                    this.executeInput(argPart);
                 } else if (upperCmd === 'REM') {
                     // Comment - do nothing
                 } else if (upperCmd === 'END') {
