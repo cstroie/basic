@@ -489,6 +489,7 @@ NEW</div>
                 // If a program is running, stop it
                 if (this.status.textContent === 'RUNNING') {
                     this.status.textContent = 'READY';
+                    this.currentLineIndex = this.sortedLines.length; // Terminate program execution
                 }
             }
 
