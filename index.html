@@ -323,27 +323,27 @@ NEW</div>
                     primes: {
                         10: 'REM CALCULATE FIRST 10 PRIME NUMBERS',
                         20: 'LET N = 0',
-                        30: 'LET CANDIDATE = 2',
+                        30: 'LET C = 2',
                         40: 'IF N >= 10 THEN GOTO 120',
-                        50: 'LET ISPRIME = 1',
-                        60: 'LET DIVISOR = 2',
-                        70: 'IF DIVISOR * DIVISOR > CANDIDATE THEN GOTO 100',
-                        80: 'IF CANDIDATE / DIVISOR = INT(CANDIDATE / DIVISOR) THEN LET ISPRIME = 0',
-                        90: 'LET DIVISOR = DIVISOR + 1 : GOTO 70',
-                        100: 'IF ISPRIME = 1 THEN PRINT CANDIDATE : LET N = N + 1',
-                        110: 'LET CANDIDATE = CANDIDATE + 1 : GOTO 40',
+                        50: 'LET P = 1',
+                        60: 'LET D = 2',
+                        70: 'IF D * D > C THEN GOTO 100',
+                        80: 'IF C / D = INT(C / D) THEN LET P = 0',
+                        90: 'LET D = D + 1 : GOTO 70',
+                        100: 'IF P = 1 THEN PRINT C : LET N = N + 1',
+                        110: 'LET C = C + 1 : GOTO 40',
                         120: 'END'
                     },
                     factorial: {
                         10: 'REM FACTORIAL CALCULATOR',
                         20: 'INPUT N',
-                        30: 'LET FACT = 1',
+                        30: 'LET F = 1',
                         40: 'LET I = 1',
                         50: 'IF I > N THEN GOTO 90',
-                        60: 'LET FACT = FACT * I',
+                        60: 'LET F = F * I',
                         70: 'LET I = I + 1',
                         80: 'GOTO 50',
-                        90: 'PRINT "FACTORIAL OF"; N; "IS"; FACT',
+                        90: 'PRINT "FACTORIAL OF"; N; "IS"; F',
                         100: 'END'
                     }
                 };
