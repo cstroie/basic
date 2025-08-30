@@ -263,6 +263,8 @@ NEW</div>
                     <button class="key" data-key="INPUT">INPUT</button>
                     <button class="key" data-key="LET">LET</button>
                     <button class="key" data-key="GOTO">GOTO</button>
+                    <button class="key" data-key="GOSUB">GOSUB</button>
+                    <button class="key" data-key="RETURN">RETURN</button>
                     <button class="key" data-key="IF">IF</button>
                     <button class="key" data-key="THEN">THEN</button>
                     <button class="key" data-key="FOR">FOR</button>
@@ -451,7 +453,7 @@ NEW</div>
                 
                 // List of BASIC keywords to convert to uppercase
                 const keywords = [
-                    'PRINT', 'INPUT', 'LET', 'GOTO', 'IF', 'THEN', 'FOR', 'TO', 'STEP', 
+                    'PRINT', 'INPUT', 'LET', 'GOTO', 'GOSUB', 'RETURN', 'IF', 'THEN', 'FOR', 'TO', 'STEP', 
                     'NEXT', 'REM', 'END', 'LIST', 'NEW', 'RUN', 'CLS', 'CLEAR', 'LOAD', 'SAVE'
                 ];
                 
@@ -507,6 +509,10 @@ NEW</div>
                     this.loadProgram(argPart || 'default');
                 } else if (upperCmd === 'INPUT') {
                     this.executeInput(argPart);
+                } else if (upperCmd === 'GOSUB') {
+                    this.executeGosub(argPart);
+                } else if (upperCmd === 'RETURN') {
+                    this.executeReturn();
                 } else if (upperCmd === 'REM') {
                     // Comment - do nothing
                 } else if (upperCmd === 'END') {
@@ -733,6 +739,10 @@ NEW</div>
                     this.executeFor(argPart, lineNum);
                 } else if (upperCmd === 'NEXT') {
                     this.executeNext();
+                } else if (upperCmd === 'GOSUB') {
+                    this.executeGosub(argPart, lineNum);
+                } else if (upperCmd === 'RETURN') {
+                    this.executeReturn();
                 } else if (upperCmd === 'REM') {
                     // Comment - do nothing
                 } else if (upperCmd === 'GOTO') {
@@ -861,6 +871,65 @@ NEW</div>
                 
                 // Set the current line index to jump to the target line
                 this.currentLineIndex = this.lineMap[targetLine];
+            }
+
+            /**
+             * Execute GOSUB command to call a subroutine
+             * @param {string} lineNum - Target line number
+             * @param {string} currentLine - Current line number (for program execution)
+             */
+            executeGosub(lineNum, currentLine = null) {
+                const targetLine = parseInt(lineNum.trim());
+                if (isNaN(targetLine)) {
+                    this.printToScreen(`?SYNTAX ERROR`);
+                    return;
+                }
+                
+                // Check if line exists
+                if (this.lineMap[targetLine] === undefined) {
+                    this.printToScreen(`?UNDEFINED LINE NUMBER`);
+                    return;
+                }
+                
+                // Initialize call stack if it doesn't exist
+                if (!this.callStack) this.callStack = [];
+                
+                // Push return address onto call stack
+                // For immediate execution, we don't have a return address
+                // For program execution, we push the next line index
+                if (currentLine !== null) {
+                    const currentIndex = this.lineMap[parseInt(currentLine)];
+                    this.callStack.push(currentIndex + 1);
+                } else {
+                    // For immediate execution, push a special marker
+                    this.callStack.push(-1);
+                }
+                
+                // Jump to the target line
+                this.currentLineIndex = this.lineMap[targetLine];
+            }
+
+            /**
+             * Execute RETURN command to return from a subroutine
+             */
+            executeReturn() {
+                // Check if call stack exists and is not empty
+                if (!this.callStack || this.callStack.length === 0) {
+                    this.printToScreen(`?RETURN WITHOUT GOSUB`);
+                    return;
+                }
+                
+                // Pop return address from call stack
+                const returnIndex = this.callStack.pop();
+                
+                // If returnIndex is -1, it was called from immediate mode
+                if (returnIndex === -1) {
+                    // Do nothing, just return to immediate mode
+                    return;
+                }
+                
+                // Jump to return address
+                this.currentLineIndex = returnIndex;
             }
 
             executeIf(expression) {
