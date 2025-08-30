@@ -872,7 +872,7 @@ NEW</div>
              */
             executeNext() {
                 if (!this.loops || this.loops.length === 0) {
-                    this.printToScreen(`?NEXT WITHOUT FOR`);
+                    this.printSyntaxError();
                     return;
                 }
                 
@@ -919,7 +919,7 @@ NEW</div>
                 
                 // Check if line exists
                 if (this.lineMap[targetLine] === undefined) {
-                    this.printToScreen(`?UNDEFINED LINE NUMBER`);
+                    this.printSyntaxError();
                     return;
                 }
                 
@@ -941,7 +941,7 @@ NEW</div>
                 
                 // Check if line exists
                 if (this.lineMap[targetLine] === undefined) {
-                    this.printToScreen(`?UNDEFINED LINE NUMBER`);
+                    this.printSyntaxError();
                     return;
                 }
                 
@@ -1063,7 +1063,7 @@ NEW</div>
             handleInputCommand(expression, lineNum) {
                 const varName = expression.trim().toUpperCase();
                 if (!varName) {
-                    this.printToScreen(`?SYNTAX ERROR IN LINE ${lineNum}`);
+                    this.printSyntaxError(lineNum);
                     this.currentLineIndex++;
                     setTimeout(() => this.executeNextLine(), 10);
                     return;
