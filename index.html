@@ -250,6 +250,10 @@ NEW</div>
                     <button id="clearButton">CLR</button>
                     <button id="saveFileButton">SAVE</button>
                     <button id="loadFileButton">LOAD</button>
+                    <select id="examplePrograms">
+                        <option value="">Load Example Program</option>
+                        <option value="helloworld">Hello World</option>
+                    </select>
                 </div>
 
                 <div class="keyboard">
@@ -306,6 +310,15 @@ NEW</div>
                 this.clearButton = document.getElementById('clearButton');
                 this.saveFileButton = document.getElementById('saveFileButton');
                 this.loadFileButton = document.getElementById('loadFileButton');
+                this.examplePrograms = document.getElementById('examplePrograms');
+                
+                // Example programs
+                this.exampleProgramsData = {
+                    helloworld: {
+                        10: 'PRINT "HELLO WORLD"',
+                        20: 'END'
+                    }
+                };
                 
                 this.setupEventListeners();
                 this.updateMemory();
@@ -323,6 +336,9 @@ NEW</div>
                 
                 // Load file button
                 this.loadFileButton.addEventListener('click', () => this.loadProgramFromFile());
+                
+                // Example programs dropdown
+                this.examplePrograms.addEventListener('change', (e) => this.loadExampleProgram(e.target.value));
                 
                 // Enter key in command input
                 this.commandInput.addEventListener('keypress', (e) => {
@@ -1040,6 +1056,28 @@ NEW</div>
                 };
                 
                 input.click();
+            }
+
+            /**
+             * Load an example program
+             * @param {string} programName - Name of the example program
+             */
+            loadExampleProgram(programName) {
+                if (!programName || !this.exampleProgramsData[programName]) return;
+                
+                // Clear current program
+                this.program = {};
+                this.variables = {};
+                
+                // Load example program
+                const example = this.exampleProgramsData[programName];
+                for (const [lineNum, command] of Object.entries(example)) {
+                    this.program[lineNum] = command;
+                }
+                
+                this.printToScreen(`LOADED EXAMPLE: ${programName.toUpperCase()}`);
+                this.updateMemory();
+                this.examplePrograms.selectedIndex = 0; // Reset dropdown
             }
 
             updateMemory() {
