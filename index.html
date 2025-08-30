@@ -1152,18 +1152,28 @@ NEW</div>
                     // Replace variables with their values
                     let processedExpr = expr;
                     // Match variable names (letters followed by optional letters/digits)
+                    // We need to match from right to left to avoid partial replacements
                     const varRegex = /[A-Z][A-Z0-9]*/gi;
-                    const matches = expr.match(varRegex) || [];
+                    let match;
+                    const matches = [];
                     
-                    // Replace each variable with its value
-                    for (const varName of matches) {
+                    // Find all matches
+                    while ((match = varRegex.exec(expr)) !== null) {
+                        matches.push({
+                            name: match[0],
+                            index: match.index
+                        });
+                    }
+                    
+                    // Replace variables from right to left to avoid index shifting
+                    for (let i = matches.length - 1; i >= 0; i--) {
+                        const varName = matches[i].name;
                         const upperVarName = varName.toUpperCase();
                         if (this.variables[upperVarName] !== undefined) {
-                            // Replace all instances of this variable with its value
-                            processedExpr = processedExpr.replace(
-                                new RegExp('\\b' + varName + '\\b', 'gi'), 
-                                this.variables[upperVarName]
-                            );
+                            // Replace this specific instance
+                            const before = processedExpr.substring(0, matches[i].index);
+                            const after = processedExpr.substring(matches[i].index + varName.length);
+                            processedExpr = before + this.variables[upperVarName] + after;
                         } else {
                             // Check if it's not a number (undefined variable)
                             if (isNaN(varName)) {
