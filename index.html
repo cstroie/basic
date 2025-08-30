@@ -529,8 +529,9 @@ NEW</div>
              */
             executePrint(expression) {
                 // Handle semicolon and comma-separated expressions
-                // Semicolon concatenates without spaces, comma adds space
+                // Semicolon concatenates with space, comma adds extra space
                 let output = '';
+                let firstItem = true;
                 let i = 0;
                 
                 while (i < expression.length) {
@@ -548,10 +549,19 @@ NEW</div>
                         
                         // Add appropriate spacing
                         if (separator === ',') {
-                            output += ' ';
+                            output += '  '; // Two spaces for comma
+                        } else {
+                            output += ' '; // One space for semicolon
                         }
+                        firstItem = false;
                         continue;
                     }
+                    
+                    // Add space before non-first items if no separator was used
+                    if (!firstItem) {
+                        output += ' ';
+                    }
+                    firstItem = false;
                     
                     // Parse a field (string literal or expression)
                     if (expression[i] === '"') {
