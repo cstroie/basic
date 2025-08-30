@@ -669,6 +669,12 @@ NEW</div>
                 const sortedLines = Object.keys(this.program)
                     .sort((a, b) => parseInt(a) - parseInt(b));
                 
+                // Create a map of line numbers to indices for quick lookup
+                const lineMap = {};
+                sortedLines.forEach((lineNum, index) => {
+                    lineMap[parseInt(lineNum)] = index;
+                });
+                
                 let i = 0;
                 const executeLine = () => {
                     if (i >= sortedLines.length) {
@@ -679,6 +685,12 @@ NEW</div>
                     
                     const lineNum = sortedLines[i];
                     const command = this.program[lineNum];
+                    
+                    // Store current line number for GOTO reference
+                    this.currentLineIndex = i;
+                    this.currentLineMap = lineMap;
+                    this.currentSortedLines = sortedLines;
+                    
                     this.executeProgramLine(lineNum, command);
                     i++;
                     
