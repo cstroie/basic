@@ -475,6 +475,13 @@ NEW</div>
              * Execute an immediate command (not part of a program)
              * @param {string} command - The command to execute
              */
+            /**
+             * Print a syntax error message to the screen
+             */
+            printSyntaxError() {
+                this.printToScreen(`?SYNTAX ERROR`);
+            }
+
             executeCommand(command) {
                 // Extract command part and argument part
                 let cmdPart = command;
@@ -516,7 +523,7 @@ NEW</div>
                 } else if (upperCmd === 'END') {
                     this.printToScreen("END");
                 } else {
-                    this.printToScreen(`?SYNTAX ERROR`);
+                    this.printSyntaxError();
                 }
                 
                 this.status.textContent = 'READY';
@@ -626,12 +633,12 @@ NEW</div>
                         if (result !== null) {
                             this.variables[varName] = result;
                         } else {
-                            this.printToScreen(`?SYNTAX ERROR`);
+                            this.printSyntaxError();
                             return;
                         }
                     }
                 } else {
-                    this.printToScreen(`?SYNTAX ERROR`);
+                    this.printSyntaxError();
                 }
             }
 
@@ -800,7 +807,7 @@ NEW</div>
                 // Parse FOR expression: variable = start TO end [STEP step]
                 const toIndex = expression.toUpperCase().indexOf(' TO ');
                 if (toIndex === -1) {
-                    this.printToScreen(`?SYNTAX ERROR IN LINE ${lineNum}`);
+                    this.printSyntaxError();
                     return;
                 }
                 
@@ -820,7 +827,7 @@ NEW</div>
                 // Parse variable assignment
                 const equalsIndex = varPart.indexOf('=');
                 if (equalsIndex === -1) {
-                    this.printToScreen(`?SYNTAX ERROR IN LINE ${lineNum}`);
+                    this.printSyntaxError();
                     return;
                 }
                 
