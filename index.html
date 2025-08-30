@@ -850,7 +850,7 @@ NEW</div>
                 const stepValue = this.evaluateExpression(stepPart);
                 
                 if (startValue === null || toValue === null || stepValue === null) {
-                    this.printToScreen(`?SYNTAX ERROR IN LINE ${lineNum}`);
+                    this.printSyntaxError(lineNum);
                     return;
                 }
                 
@@ -913,7 +913,7 @@ NEW</div>
             executeGoto(lineNum) {
                 const targetLine = parseInt(lineNum.trim());
                 if (isNaN(targetLine)) {
-                    this.printToScreen(`?SYNTAX ERROR`);
+                    this.printSyntaxError();
                     return;
                 }
                 
@@ -935,7 +935,7 @@ NEW</div>
             executeGosub(lineNum, currentLine = null) {
                 const targetLine = parseInt(lineNum.trim());
                 if (isNaN(targetLine)) {
-                    this.printToScreen(`?SYNTAX ERROR`);
+                    this.printSyntaxError();
                     return;
                 }
                 
@@ -995,7 +995,7 @@ NEW</div>
                 // Parse IF expression: condition THEN command
                 const thenIndex = expression.toUpperCase().indexOf(' THEN ');
                 if (thenIndex === -1) {
-                    this.printToScreen(`?SYNTAX ERROR`);
+                    this.printSyntaxError();
                     return;
                 }
                 
