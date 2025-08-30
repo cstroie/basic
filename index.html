@@ -1046,12 +1046,16 @@ NEW</div>
                     if (e.key === 'Enter') {
                         const inputValue = inputField.value.trim();
                         
-                        // Try to parse as number first, otherwise store as string
-                        if (!isNaN(inputValue) && inputValue !== '') {
-                            this.variables[varName] = parseFloat(inputValue);
-                        } else {
-                            this.variables[varName] = inputValue;
+                        // Validate that input is numeric
+                        if (inputValue === '' || isNaN(inputValue)) {
+                            // Show error and keep focus on input field
+                            this.printToScreen(`?REDO FROM START`);
+                            inputField.focus();
+                            return;
                         }
+                        
+                        // Store as number
+                        this.variables[varName] = parseFloat(inputValue);
                         
                         // Remove input field
                         inputContainer.remove();
