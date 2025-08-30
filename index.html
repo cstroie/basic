@@ -477,9 +477,19 @@ NEW</div>
              */
             /**
              * Print a syntax error message to the screen
+             * @param {string} lineNum - Optional line number where error occurred
              */
-            printSyntaxError() {
-                this.printToScreen(`?SYNTAX ERROR`);
+            printSyntaxError(lineNum = null) {
+                if (lineNum !== null) {
+                    this.printToScreen(`?SYNTAX ERROR IN LINE ${lineNum}`);
+                } else {
+                    this.printToScreen(`?SYNTAX ERROR`);
+                }
+                
+                // If a program is running, stop it
+                if (this.status.textContent === 'RUNNING') {
+                    this.status.textContent = 'READY';
+                }
             }
 
             executeCommand(command) {
@@ -794,7 +804,7 @@ NEW</div>
                     this.printToScreen("END");
                     this.status.textContent = 'READY';
                 } else {
-                    this.printToScreen(`?SYNTAX ERROR IN LINE ${lineNum}`);
+                    this.printSyntaxError(lineNum);
                 }
             }
 
