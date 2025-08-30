@@ -495,21 +495,21 @@ NEW</div>
                 const parts = expression.split('=');
                 if (parts.length === 2) {
                     const varName = parts[0].trim().toUpperCase(); // Variable names should be uppercase
-                    const value = parts[1].trim();
+                    const valueExpr = parts[1].trim();
                     
-                    // Try to evaluate value
-                    if (value.startsWith('"') && value.endsWith('"')) {
+                    // Try to evaluate value expression
+                    if (valueExpr.startsWith('"') && valueExpr.endsWith('"')) {
                         // String - preserve case
-                        this.variables[varName] = value.substring(1, value.length - 1);
-                    } else if (!isNaN(value)) {
-                        // Number
-                        this.variables[varName] = parseFloat(value);
-                    } else if (this.variables[value.toUpperCase()] !== undefined) {
-                        // Variable reference - convert to uppercase
-                        this.variables[varName] = this.variables[value.toUpperCase()];
+                        this.variables[varName] = valueExpr.substring(1, valueExpr.length - 1);
                     } else {
-                        this.printToScreen(`?SYNTAX ERROR`);
-                        return;
+                        // Try to evaluate as arithmetic expression
+                        const result = this.evaluateExpression(valueExpr);
+                        if (result !== null) {
+                            this.variables[varName] = result;
+                        } else {
+                            this.printToScreen(`?SYNTAX ERROR`);
+                            return;
+                        }
                     }
                 } else {
                     this.printToScreen(`?SYNTAX ERROR`);
@@ -672,6 +672,75 @@ NEW</div>
             executeIf(expression) {
                 // Simplified IF implementation
                 this.printToScreen(`IF ${expression} (NOT IMPLEMENTED IN THIS DEMO)`);
+            }
+
+            /**
+             * Evaluate arithmetic expressions with variables and numbers
+             * @param {string} expr - The expression to evaluate
+             * @returns {number|null} - The result or null if invalid
+             */
+            evaluateExpression(expr) {
+                // Remove spaces
+                expr = expr.replace(/\s+/g, '');
+                
+                // Simple expression evaluator for + and - operations
+                // This is a basic implementation - a full parser would be more complex
+                try {
+                    // Replace variables with their values
+                    let processedExpr = expr;
+                    const varRegex = /[A-Z][A-Z0-9]*/gi;
+                    let match;
+                    while ((match = varRegex.exec(expr)) !== null) {
+                        const varName = match[0].toUpperCase();
+                        if (this.variables[varName] !== undefined) {
+                            // Replace the variable with its value
+                            processedExpr = processedExpr.replace(new RegExp('\\b' + varName + '\\b', 'g'), this.variables[varName]);
+                        } else if (isNaN(varName)) {
+                            // Variable not defined
+                            return null;
+                        }
+                    }
+                    
+                    // Evaluate simple arithmetic (only + and - for now)
+                    // This is a very basic implementation
+                    const tokens = processedExpr.match(/(\d+\.?\d*|[+\-*/])/g);
+                    if (!tokens) {
+                        // Just a number or variable value
+                        const numValue = parseFloat(processedExpr);
+                        return isNaN(numValue) ? null : numValue;
+                    }
+                    
+                    let result = parseFloat(tokens[0]);
+                    if (isNaN(result)) return null;
+                    
+                    for (let i = 1; i < tokens.length; i += 2) {
+                        const operator = tokens[i];
+                        const operand = parseFloat(tokens[i + 1]);
+                        if (isNaN(operand)) return null;
+                        
+                        switch (operator) {
+                            case '+':
+                                result += operand;
+                                break;
+                            case '-':
+                                result -= operand;
+                                break;
+                            case '*':
+                                result *= operand;
+                                break;
+                            case '/':
+                                if (operand === 0) return null; // Division by zero
+                                result /= operand;
+                                break;
+                            default:
+                                return null; // Unsupported operator
+                        }
+                    }
+                    
+                    return result;
+                } catch (e) {
+                    return null;
+                }
             }
 
             printToScreen(text) {
