@@ -653,6 +653,8 @@ NEW</div>
                     this.executePrint(argPart);
                 } else if (upperCmd === 'LET') {
                     this.executeLet(argPart);
+                } else if (upperCmd === 'INPUT') {
+                    this.executeInput(argPart);
                 } else if (upperCmd === 'FOR') {
                     this.executeFor(argPart, lineNum);
                 } else if (upperCmd === 'NEXT') {
