@@ -1080,53 +1080,41 @@ NEW</div>
                 // Print input prompt
                 this.printToScreen(`?INPUT ${varName}`);
                 
-                // Create input field for user input
-                const inputField = document.createElement('input');
-                inputField.type = 'text';
-                inputField.style.width = '100px';
-                inputField.style.marginLeft = '10px';
-                inputField.style.backgroundColor = '#2c3e50';
-                inputField.style.color = '#ecf0f1';
-                inputField.style.border = '1px solid #7f8c8d';
-                inputField.style.fontFamily = 'Press Start 2P, cursive';
-                inputField.style.fontSize = '12px';
+                // Use the existing commandInput for user input
+                this.commandInput.placeholder = `Enter value for ${varName}`;
+                this.commandInput.focus();
                 
-                // Add input field to screen
-                const inputContainer = document.createElement('div');
-                inputContainer.style.display = 'flex';
-                inputContainer.style.alignItems = 'center';
-                inputContainer.appendChild(document.createTextNode('?INPUT ' + varName));
-                inputContainer.appendChild(inputField);
-                this.screen.appendChild(inputContainer);
-                this.screen.scrollTop = this.screen.scrollHeight;
-                
-                // Focus on input field
-                inputField.focus();
-                
-                // Handle input submission
-                inputField.addEventListener('keypress', (e) => {
+                // Handle input submission through the existing event listener
+                const handleInput = (e) => {
                     if (e.key === 'Enter') {
-                        const inputValue = inputField.value.trim();
+                        const inputValue = this.commandInput.value.trim();
                         
                         // Validate that input is numeric
                         if (inputValue === '' || isNaN(inputValue)) {
                             // Show error and keep focus on input field
                             this.printToScreen(`?REDO FROM START`);
-                            inputField.focus();
+                            this.commandInput.focus();
                             return;
                         }
                         
                         // Store as number
                         this.variables[varName] = parseFloat(inputValue);
                         
-                        // Remove input field
-                        inputContainer.remove();
+                        // Clear input and reset placeholder
+                        this.commandInput.value = '';
+                        this.commandInput.placeholder = 'Enter BASIC command';
+                        
+                        // Remove this event listener to avoid conflicts
+                        this.commandInput.removeEventListener('keypress', handleInput);
                         
                         // Continue program execution
                         this.currentLineIndex++;
                         setTimeout(() => this.executeNextLine(), 10);
                     }
-                });
+                };
+                
+                // Add temporary event listener for this input
+                this.commandInput.addEventListener('keypress', handleInput);
             }
 
             /**
