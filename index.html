@@ -263,6 +263,7 @@ NEW</div>
             <div class="keyboard-container">
                 <div class="keyboard">
                     <button class="key" data-key="PRINT">PRINT</button>
+                    <button class="key" data-key="AT">AT</button>
                     <button class="key" data-key="INPUT">INPUT</button>
                     <button class="key" data-key="LET">LET</button>
                     <button class="key" data-key="GOTO">GOTO</button>
@@ -455,7 +456,7 @@ NEW</div>
                 // List of BASIC keywords to convert to uppercase
                 const keywords = [
                     'PRINT', 'INPUT', 'LET', 'GOTO', 'GOSUB', 'RETURN', 'IF', 'THEN', 'FOR', 'TO', 'STEP', 
-                    'NEXT', 'REM', 'END', 'LIST', 'NEW', 'RUN', 'CLS', 'CLEAR', 'LOAD', 'SAVE'
+                    'NEXT', 'REM', 'END', 'LIST', 'NEW', 'RUN', 'CLS', 'CLEAR', 'LOAD', 'SAVE', 'AT'
                 ];
                 
                 // Convert first token (command) if it's a keyword
@@ -524,6 +525,10 @@ NEW</div>
                     this.clearScreen();
                 } else if (upperCmd === 'PRINT') {
                     this.executePrint(argPart);
+                } else if (upperCmd === 'AT') {
+                    this.executeAt(argPart);
+                } else if (upperCmd === 'AT') {
+                    this.executeAt(argPart);
                 } else if (upperCmd === 'LET') {
                     this.executeLet(argPart);
                 } else if (upperCmd === 'SAVE') {
@@ -553,6 +558,13 @@ NEW</div>
              * @param {string} expression - The expression to print
              */
             executePrint(expression) {
+                // Check if this is a PRINT AT command
+                const upperExpression = expression.toUpperCase();
+                if (upperExpression.startsWith('AT ')) {
+                    return this.executePrintAt(expression.substring(3));
+                }
+                
+                // Handle regular PRINT command
                 // Handle semicolon and comma-separated expressions
                 // Semicolon concatenates with space, comma adds extra space
                 let output = '';
@@ -631,6 +643,37 @@ NEW</div>
             }
 
             /**
+             * Execute PRINT AT command for positioning text
+             * @param {string} expression - The expression with position and text
+             */
+            executePrintAt(expression) {
+                // Parse: PRINT AT row, column, text
+                const parts = expression.split(',');
+                if (parts.length < 3) {
+                    this.printSyntaxError();
+                    return;
+                }
+                
+                const rowExpr = parts[0].trim();
+                const colExpr = parts[1].trim();
+                const textExpr = parts.slice(2).join(',').trim();
+                
+                // Evaluate row and column
+                const row = this.evaluateExpression(rowExpr);
+                const col = this.evaluateExpression(colExpr);
+                
+                if (row === null || col === null) {
+                    this.printSyntaxError();
+                    return;
+                }
+                
+                // For simplicity, we'll just print the text normally since we don't have
+                // actual screen positioning in this implementation
+                // In a real implementation, this would position the cursor
+                this.executePrint(textExpr);
+            }
+
+            /**
              * Execute LET command to assign values to variables
              * @param {string} expression - The assignment expression (e.g., "A = 10")
              */
@@ -658,6 +701,35 @@ NEW</div>
                 } else {
                     this.printSyntaxError();
                 }
+            }
+
+            /**
+             * Execute AT command (standalone)
+             * @param {string} expression - The position expression (e.g., "10, 5")
+             */
+            executeAt(expression) {
+                // Parse AT row, column
+                const parts = expression.split(',');
+                if (parts.length < 2) {
+                    this.printSyntaxError();
+                    return;
+                }
+                
+                const rowExpr = parts[0].trim();
+                const colExpr = parts[1].trim();
+                
+                // Evaluate row and column
+                const row = this.evaluateExpression(rowExpr);
+                const col = this.evaluateExpression(colExpr);
+                
+                if (row === null || col === null) {
+                    this.printSyntaxError();
+                    return;
+                }
+                
+                // For simplicity, we'll just acknowledge the command
+                // In a real implementation, this would position the cursor
+                this.printToScreen(`POSITION SET TO ROW ${row}, COLUMN ${col}`);
             }
 
             newProgram() {
