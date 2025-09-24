@@ -1077,15 +1077,21 @@ NEW</div>
                     return;
                 }
                 
-                // Print input prompt
-                this.printToScreen(`?INPUT ${varName}`);
-                
                 // Store original placeholder
                 const originalPlaceholder = this.commandInput.placeholder;
                 
-                // Use the existing commandInput for user input
-                this.commandInput.placeholder = `Enter value for ${varName}`;
-                this.commandInput.focus();
+                // Function to handle input prompt
+                const promptForInput = () => {
+                    // Print input prompt
+                    this.printToScreen(`?INPUT ${varName}`);
+                    
+                    // Use the existing commandInput for user input
+                    this.commandInput.placeholder = `Enter value for ${varName}`;
+                    this.commandInput.focus();
+                };
+                
+                // Initial prompt
+                promptForInput();
                 
                 // Handle input submission through the existing event listener
                 const handleInput = (e) => {
@@ -1096,7 +1102,8 @@ NEW</div>
                         if (inputValue === '' || isNaN(inputValue)) {
                             // Show error and keep focus on input field
                             this.printToScreen(`?REDO FROM START`);
-                            this.commandInput.focus();
+                            this.commandInput.value = ''; // Clear invalid input
+                            promptForInput(); // Re-prompt
                             return;
                         }
                         
