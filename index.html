@@ -459,11 +459,16 @@ NEW</div>
                     const upperCommand = this.convertKeywordsToUppercase(command);
                     this.program[parseInt(actualLineNum)] = upperCommand;
                     this.printToScreen(`${actualLineNum} ${upperCommand}`);
+                    this.printToScreen("OK.");
                     this.commandInput.value = '';
                 } else if (command) {
                     // Execute immediate command (convert only keywords to uppercase)
                     const upperCommand = this.convertKeywordsToUppercase(command);
                     this.executeCommand(upperCommand);
+                    // Only print OK for successful commands that don't produce output
+                    if (this.status.textContent === 'READY' && !['LIST', 'RUN', 'NEW', 'CLS', 'CLEAR'].includes(upperCommand.split(' ')[0].toUpperCase())) {
+                        this.printToScreen("OK.");
+                    }
                     this.commandInput.value = '';
                 }
                 
