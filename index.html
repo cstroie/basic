@@ -376,7 +376,7 @@ NEW</div>
                         190: 'LET ZY = 2 * ZX * ZY + CY',
                         200: 'LET ZX = ZX2',
                         210: 'NEXT K',
-                        220: 'IF ITER >= MAXITER THEN PRINT AT J, I, "*"',
+                        220: 'IF K >= MAXITER THEN PRINT AT J, I, "*"',
                         230: 'NEXT I',
                         240: 'NEXT J',
                         250: 'END'
@@ -1341,26 +1341,17 @@ NEW</div>
                         const regex = new RegExp('\\b' + varName + '\\b', 'g');
                         const oldValue = this.variables[varName];
                         console.log(`Replacing ${varName} with ${oldValue}`);
-                        processedExpr = processedExpr.replace(regex, oldValue);
+                        // Convert to string and handle special cases
+                        const replacement = String(oldValue);
+                        processedExpr = processedExpr.replace(regex, replacement);
                     }
                     
                     console.log('Processed expression:', processedExpr);
-                    
-                    // Evaluate simple arithmetic
-                    // Only allow numbers, operators, parentheses, and decimal points
-                    if (/[^0-9+\-*/.() ]/.test(processedExpr)) {
-                        console.log('Invalid characters in expression');
-                        return null; // Invalid characters
-                    }
                     
                     // Handle empty expressions
                     if (processedExpr === '') {
                         return null;
                     }
-                    
-                    // Use a safer evaluation method that respects parentheses and order of operations
-                    // Replace ** with Math.pow for exponentiation if needed
-                    // But for now, we'll use the Function constructor with proper validation
                     
                     // Validate that the expression only contains safe characters
                     if (!/^[0-9+\-*/.() ]+$/.test(processedExpr)) {
