@@ -541,10 +541,14 @@ NEW</div>
                     this.executeLet(argPart);
                 } else if (upperCmd === 'SAVE') {
                     console.log('SAVE command executed:', argPart || 'default');
-                    this.saveProgram(argPart || 'default');
+                    // Handle quoted string or plain name
+                    const programName = this.extractStringLiteral(argPart) || argPart || 'default';
+                    this.saveProgram(programName);
                 } else if (upperCmd === 'LOAD') {
                     console.log('LOAD command executed:', argPart || 'default');
-                    this.loadProgram(argPart || 'default');
+                    // Handle quoted string or plain name
+                    const programName = this.extractStringLiteral(argPart) || argPart || 'default';
+                    this.loadProgram(programName);
                 } else if (upperCmd === 'INPUT') {
                     console.log('INPUT command executed:', argPart);
                     this.executeInput(argPart);
@@ -778,6 +782,21 @@ NEW</div>
                 this.variables = {};
                 this.clearScreen();
                 this.printToScreen("NEW");
+            }
+
+            /**
+             * Extract string literal from quoted text
+             * @param {string} text - Text that may contain quoted string
+             * @returns {string|null} - Extracted string or null if not found
+             */
+            extractStringLiteral(text) {
+                if (!text) return null;
+                
+                const trimmed = text.trim();
+                if (trimmed.startsWith('"') && trimmed.endsWith('"') && trimmed.length >= 2) {
+                    return trimmed.substring(1, trimmed.length - 1);
+                }
+                return null;
             }
 
             /**
