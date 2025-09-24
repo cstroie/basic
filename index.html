@@ -718,6 +718,8 @@ NEW</div>
                 const row = this.evaluateExpression(rowExpr);
                 const col = this.evaluateExpression(colExpr);
                 
+                console.log('PRINT AT evaluated values:', { row, col });
+                
                 if (row === null || col === null) {
                     console.log('PRINT AT evaluation error: invalid row or column');
                     this.printSyntaxError();
@@ -1304,6 +1306,8 @@ NEW</div>
              * @returns {number|null} - The result or null if invalid
              */
             evaluateExpression(expr) {
+                console.log('Evaluating expression:', expr);
+                
                 // Handle built-in functions first
                 if (expr.toUpperCase().startsWith('RND')) {
                     return Math.random();
@@ -1328,16 +1332,24 @@ NEW</div>
                     const varNames = Object.keys(this.variables)
                         .sort((a, b) => b.length - a.length);
                     
+                    console.log('Variables available:', this.variables);
+                    console.log('Variable names to replace:', varNames);
+                    
                     for (const varName of varNames) {
                         // Replace all instances of this variable with its value
                         // Use word boundaries to avoid partial matches
                         const regex = new RegExp('\\b' + varName + '\\b', 'g');
-                        processedExpr = processedExpr.replace(regex, this.variables[varName]);
+                        const oldValue = this.variables[varName];
+                        console.log(`Replacing ${varName} with ${oldValue}`);
+                        processedExpr = processedExpr.replace(regex, oldValue);
                     }
+                    
+                    console.log('Processed expression:', processedExpr);
                     
                     // Evaluate simple arithmetic
                     // Only allow numbers, operators, parentheses, and decimal points
                     if (/[^0-9+\-*/.() ]/.test(processedExpr)) {
+                        console.log('Invalid characters in expression');
                         return null; // Invalid characters
                     }
                     
@@ -1346,10 +1358,23 @@ NEW</div>
                         return null;
                     }
                     
-                    // Evaluate the expression
+                    // Use a safer evaluation method that respects parentheses and order of operations
+                    // Replace ** with Math.pow for exponentiation if needed
+                    // But for now, we'll use the Function constructor with proper validation
+                    
+                    // Validate that the expression only contains safe characters
+                    if (!/^[0-9+\-*/.() ]+$/.test(processedExpr)) {
+                        console.log('Expression contains invalid characters');
+                        return null;
+                    }
+                    
+                    // Evaluate the expression using Function constructor
+                    // This respects parentheses and order of operations
                     const result = Function('"use strict"; return (' + processedExpr + ')')();
+                    console.log('Expression result:', result);
                     return typeof result === 'number' && !isNaN(result) ? result : null;
                 } catch (e) {
+                    console.log('Expression evaluation error:', e);
                     return null; // Invalid expression
                 }
             }
