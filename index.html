@@ -506,6 +506,9 @@ NEW</div>
                 let cmdPart = command;
                 let argPart = '';
                 
+                // Log the command being executed
+                console.log('Executing command:', { command, cmdPart, argPart });
+                
                 // Find the first space to separate command from arguments
                 const firstSpace = command.indexOf(' ');
                 if (firstSpace > 0) {
@@ -516,36 +519,49 @@ NEW</div>
                 const upperCmd = cmdPart.toUpperCase();
                 
                 if (upperCmd === 'NEW') {
+                    console.log('NEW command executed');
                     this.newProgram();
                 } else if (upperCmd === 'LIST') {
+                    console.log('LIST command executed');
                     this.listProgram();
                 } else if (upperCmd === 'RUN') {
+                    console.log('RUN command executed');
                     this.runProgram();
                 } else if (upperCmd === 'CLS' || upperCmd === 'CLEAR') {
+                    console.log('CLS/CLEAR command executed');
                     this.clearScreen();
                 } else if (upperCmd === 'PRINT') {
+                    console.log('PRINT command executed:', argPart);
                     this.executePrint(argPart);
                 } else if (upperCmd === 'AT') {
-                    this.executeAt(argPart);
-                } else if (upperCmd === 'AT') {
+                    console.log('AT command executed:', argPart);
                     this.executeAt(argPart);
                 } else if (upperCmd === 'LET') {
+                    console.log('LET command executed:', argPart);
                     this.executeLet(argPart);
                 } else if (upperCmd === 'SAVE') {
+                    console.log('SAVE command executed:', argPart || 'default');
                     this.saveProgram(argPart || 'default');
                 } else if (upperCmd === 'LOAD') {
+                    console.log('LOAD command executed:', argPart || 'default');
                     this.loadProgram(argPart || 'default');
                 } else if (upperCmd === 'INPUT') {
+                    console.log('INPUT command executed:', argPart);
                     this.executeInput(argPart);
                 } else if (upperCmd === 'GOSUB') {
+                    console.log('GOSUB command executed:', argPart);
                     this.executeGosub(argPart);
                 } else if (upperCmd === 'RETURN') {
+                    console.log('RETURN command executed');
                     this.executeReturn();
                 } else if (upperCmd === 'REM') {
+                    console.log('REM command executed:', argPart);
                     // Comment - do nothing
                 } else if (upperCmd === 'END') {
+                    console.log('END command executed');
                     this.printToScreen("END");
                 } else {
+                    console.log('Unknown command or syntax error:', command);
                     this.printSyntaxError();
                 }
                 
@@ -558,9 +574,12 @@ NEW</div>
              * @param {string} expression - The expression to print
              */
             executePrint(expression) {
+                console.log('Executing PRINT with expression:', expression);
+                
                 // Check if this is a PRINT AT command
                 const upperExpression = expression.toUpperCase();
                 if (upperExpression.startsWith('AT ')) {
+                    console.log('PRINT AT command detected');
                     return this.executePrintAt(expression.substring(3));
                 }
                 
@@ -647,9 +666,12 @@ NEW</div>
              * @param {string} expression - The expression with position and text
              */
             executePrintAt(expression) {
+                console.log('Executing PRINT AT with expression:', expression);
+                
                 // Parse: PRINT AT row, column, text
                 const parts = expression.split(',');
                 if (parts.length < 3) {
+                    console.log('PRINT AT syntax error: insufficient arguments');
                     this.printSyntaxError();
                     return;
                 }
@@ -658,11 +680,14 @@ NEW</div>
                 const colExpr = parts[1].trim();
                 const textExpr = parts.slice(2).join(',').trim();
                 
+                console.log('PRINT AT parsed parts:', { rowExpr, colExpr, textExpr });
+                
                 // Evaluate row and column
                 const row = this.evaluateExpression(rowExpr);
                 const col = this.evaluateExpression(colExpr);
                 
                 if (row === null || col === null) {
+                    console.log('PRINT AT evaluation error: invalid row or column');
                     this.printSyntaxError();
                     return;
                 }
@@ -678,27 +703,36 @@ NEW</div>
              * @param {string} expression - The assignment expression (e.g., "A = 10")
              */
             executeLet(expression) {
+                console.log('Executing LET with expression:', expression);
+                
                 // Simple LET implementation
                 const parts = expression.split('=');
                 if (parts.length === 2) {
                     const varName = parts[0].trim().toUpperCase(); // Variable names should be uppercase
                     const valueExpr = parts[1].trim();
                     
+                    console.log('LET assignment:', { varName, valueExpr });
+                    
                     // Try to evaluate value expression
                     if (valueExpr.startsWith('"') && valueExpr.endsWith('"')) {
                         // String - preserve case
-                        this.variables[varName] = valueExpr.substring(1, valueExpr.length - 1);
+                        const stringValue = valueExpr.substring(1, valueExpr.length - 1);
+                        this.variables[varName] = stringValue;
+                        console.log('Assigned string value:', { varName, value: stringValue });
                     } else {
                         // Try to evaluate as arithmetic expression
                         const result = this.evaluateExpression(valueExpr);
                         if (result !== null) {
                             this.variables[varName] = result;
+                            console.log('Assigned numeric value:', { varName, value: result });
                         } else {
+                            console.log('LET evaluation error: invalid expression');
                             this.printSyntaxError();
                             return;
                         }
                     }
                 } else {
+                    console.log('LET syntax error: invalid format');
                     this.printSyntaxError();
                 }
             }
@@ -708,9 +742,12 @@ NEW</div>
              * @param {string} expression - The position expression (e.g., "10, 5")
              */
             executeAt(expression) {
+                console.log('Executing standalone AT with expression:', expression);
+                
                 // Parse AT row, column
                 const parts = expression.split(',');
                 if (parts.length < 2) {
+                    console.log('AT syntax error: insufficient arguments');
                     this.printSyntaxError();
                     return;
                 }
@@ -718,11 +755,14 @@ NEW</div>
                 const rowExpr = parts[0].trim();
                 const colExpr = parts[1].trim();
                 
+                console.log('AT parsed parts:', { rowExpr, colExpr });
+                
                 // Evaluate row and column
                 const row = this.evaluateExpression(rowExpr);
                 const col = this.evaluateExpression(colExpr);
                 
                 if (row === null || col === null) {
+                    console.log('AT evaluation error: invalid row or column');
                     this.printSyntaxError();
                     return;
                 }
@@ -733,6 +773,7 @@ NEW</div>
             }
 
             newProgram() {
+                console.log('NEW command: clearing program and variables');
                 this.program = {};
                 this.variables = {};
                 this.clearScreen();
@@ -744,6 +785,7 @@ NEW</div>
              * @param {string} name - Program name (defaults to 'default')
              */
             saveProgram(name = 'default') {
+                console.log('Saving program:', name);
                 try {
                     const data = {
                         program: this.program,
@@ -752,7 +794,9 @@ NEW</div>
                     const lowerName = name.toLowerCase();
                     localStorage.setItem(`basic_program_${lowerName}`, JSON.stringify(data));
                     this.printToScreen(`PROGRAM SAVED AS "${name}"`);
+                    console.log('Program saved successfully');
                 } catch (e) {
+                    console.error('Save error:', e);
                     this.printToScreen(`?SAVE ERROR: ${e.message}`);
                 }
             }
@@ -762,6 +806,7 @@ NEW</div>
              * @param {string} name - Program name (defaults to 'default')
              */
             loadProgram(name = 'default') {
+                console.log('Loading program:', name);
                 try {
                     const lowerName = name.toLowerCase();
                     const data = localStorage.getItem(`basic_program_${lowerName}`);
@@ -771,10 +816,13 @@ NEW</div>
                         this.variables = parsed.variables || {};
                         this.printToScreen(`PROGRAM "${name}" LOADED`);
                         this.updateMemory();
+                        console.log('Program loaded successfully');
                     } else {
+                        console.log('Program not found');
                         this.printToScreen(`?PROGRAM "${name}" NOT FOUND`);
                     }
                 } catch (e) {
+                    console.error('Load error:', e);
                     this.printToScreen(`?LOAD ERROR: ${e.message}`);
                 }
             }
@@ -796,6 +844,7 @@ NEW</div>
              * Executes each line with a small delay for demonstration
              */
             runProgram() {
+                console.log('RUN command: starting program execution');
                 this.status.textContent = 'RUNNING';
                 this.printToScreen("RUN");
                 
@@ -818,6 +867,7 @@ NEW</div>
              */
             executeNextLine() {
                 if (this.currentLineIndex >= this.sortedLines.length) {
+                    console.log('Program execution completed');
                     this.status.textContent = 'READY';
                     this.printToScreen("READY.");
                     return;
@@ -825,6 +875,8 @@ NEW</div>
                 
                 const lineNum = this.sortedLines[this.currentLineIndex];
                 const command = this.program[lineNum];
+                
+                console.log('Executing program line:', { lineNum, command });
                 
                 const result = this.executeProgramLine(lineNum, command);
                 
