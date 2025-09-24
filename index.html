@@ -253,6 +253,7 @@ NEW</div>
                         <option value="helloworld">Hello World</option>
                         <option value="primes">First 10 Primes</option>
                         <option value="factorial">Factorial Calculator</option>
+                        <option value="mandelbrot">Mandelbrot Fractal</option>
                     </select>
                 </div>
                 <div class="status-bar">
@@ -352,6 +353,33 @@ NEW</div>
                         60: 'NEXT I',
                         70: 'PRINT "FACTORIAL OF"; N; "IS"; F',
                         80: 'END'
+                    },
+                    mandelbrot: {
+                        10: 'REM MANDELBROT FRACTAL',
+                        20: 'LET XMIN = -2',
+                        30: 'LET XMAX = 1',
+                        40: 'LET YMIN = -1',
+                        50: 'LET YMAX = 1',
+                        60: 'LET WIDTH = 30',
+                        70: 'LET HEIGHT = 20',
+                        80: 'FOR J = 0 TO HEIGHT',
+                        90: 'FOR I = 0 TO WIDTH',
+                        100: 'LET CX = XMIN + (XMAX - XMIN) * I / WIDTH',
+                        110: 'LET CY = YMIN + (YMAX - YMIN) * J / HEIGHT',
+                        120: 'LET ZX = 0',
+                        130: 'LET ZY = 0',
+                        140: 'LET ITER = 0',
+                        150: 'LET MAXITER = 30',
+                        160: 'FOR K = 0 TO MAXITER',
+                        170: 'IF ZX * ZX + ZY * ZY > 4 THEN GOTO 210',
+                        180: 'LET ZX2 = ZX * ZX - ZY * ZY + CX',
+                        190: 'LET ZY = 2 * ZX * ZY + CY',
+                        200: 'LET ZX = ZX2',
+                        210: 'NEXT K',
+                        220: 'IF ITER >= MAXITER THEN PRINT AT J, I, "*"',
+                        230: 'NEXT I',
+                        240: 'NEXT J',
+                        250: 'END'
                     }
                 };
                 
