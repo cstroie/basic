@@ -1080,6 +1080,9 @@ NEW</div>
                 // Print input prompt
                 this.printToScreen(`?INPUT ${varName}`);
                 
+                // Store original placeholder
+                const originalPlaceholder = this.commandInput.placeholder;
+                
                 // Use the existing commandInput for user input
                 this.commandInput.placeholder = `Enter value for ${varName}`;
                 this.commandInput.focus();
@@ -1102,7 +1105,7 @@ NEW</div>
                         
                         // Clear input and reset placeholder
                         this.commandInput.value = '';
-                        this.commandInput.placeholder = 'Enter BASIC command';
+                        this.commandInput.placeholder = originalPlaceholder;
                         
                         // Remove this event listener to avoid conflicts
                         this.commandInput.removeEventListener('keypress', handleInput);
