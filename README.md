@@ -51,6 +51,10 @@ The menu on the page has nine built-in programs. The same programs, plus the ori
 | `sort.bas` | `DIM`, `READ` / `DATA`, nested loops |
 | `mandelbrot.bas` | `PRINT AT`, `WHILE`, `AND`, `MID$` |
 
+## Install and offline use
+
+The page is a Progressive Web App. Your browser offers to install it (on a phone, use **Add to Home Screen**). After the first visit it also works offline: a service worker (`sw.js`) caches the app and refreshes it in the background, so updates appear on the next visit.
+
 ## Layout
 
 - `basic.js` holds the interpreter core: tokenizer, expression parser, statement executor, character-grid terminal and example programs. It does not touch the DOM, so it can also run under Node.
