@@ -4,1504 +4,652 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BASIC Interpreter</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        :root {
+            --page: #16130f;
+            --panel: #24201a;
+            --panel-edge: #3a332a;
+            --ink: #e8dcc4;
+            --ink-dim: #9c8f78;
+            --key: #d9cdb3;
+            --key-shade: #9e927a;
+            --key-ink: #2a251d;
+            --accent: #d9622b;
+            --accent-shade: #8f3c16;
+            --fg: #4cff7a;
+            --glow: rgba(76, 255, 122, 0.55);
+            --crt: #061409;
+            --pixel: 'Press Start 2P', ui-monospace, monospace;
         }
+
+        :root[data-phosphor="amber"] {
+            --fg: #ffb43a;
+            --glow: rgba(255, 180, 58, 0.55);
+            --crt: #150c02;
+        }
+
+        :root[data-phosphor="white"] {
+            --fg: #e6efff;
+            --glow: rgba(200, 220, 255, 0.45);
+            --crt: #0b0d12;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            font-family: 'Press Start 2P', cursive;
-            background-color: #2c3e50;
-            color: #ecf0f1;
-            padding: 10px;
-            display: flex;
-            flex-direction: column;
+            background: radial-gradient(ellipse at top, #241e17, var(--page) 70%) fixed;
+            background-color: var(--page);
+            color: var(--ink);
+            font-family: var(--pixel);
+            font-size: 10px;
+            line-height: 1.6;
             min-height: 100vh;
-            font-size: 12px;
+            padding: 24px 16px 32px;
         }
 
-        .container {
-            max-width: 1000px;
-            margin: 0 auto;
-            width: 100%;
-        }
+        .wrap { max-width: 1120px; margin: 0 auto; }
 
         header {
-            text-align: center;
-            padding: 10px 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            flex-wrap: wrap;
             margin-bottom: 20px;
         }
 
         h1 {
-            font-size: 2rem;
-            color: #3498db;
-            text-shadow: 0 0 5px rgba(52, 152, 219, 0.5);
+            font-size: clamp(14px, 3vw, 22px);
+            letter-spacing: 2px;
+            color: var(--ink);
         }
 
-        .interpreter-container {
-            display: flex;
-            flex-direction: column;
+        h1 span { color: var(--accent); }
+
+        .tagline { color: var(--ink-dim); font-size: 8px; margin-top: 8px; }
+
+        .phosphor { display: flex; gap: 8px; align-items: center; font-size: 8px; color: var(--ink-dim); }
+
+        .phosphor button {
+            width: 20px; height: 20px;
+            border-radius: 50%;
+            border: 2px solid var(--panel-edge);
+            cursor: pointer;
+        }
+
+        .phosphor button[aria-pressed="true"] { border-color: var(--ink); }
+        .phosphor [data-p="green"] { background: #4cff7a; }
+        .phosphor [data-p="amber"] { background: #ffb43a; }
+        .phosphor [data-p="white"] { background: #e6efff; }
+
+        .layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 300px;
             gap: 20px;
+            align-items: start;
         }
 
-        @media (min-width: 768px) {
-            .interpreter-container {
-                flex-direction: row;
-            }
+        /* ---- monitor ---- */
+
+        .bezel {
+            background: linear-gradient(180deg, #cfc3a8, #b3a688);
+            border-radius: 18px;
+            padding: 22px 22px 12px;
+            box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.4), inset 0 -3px 0 rgba(0, 0, 0, 0.2), 0 12px 30px rgba(0, 0, 0, 0.6);
         }
 
-        .screen-container {
-            flex: 1;
-            background-color: #1a1a1a;
-            border: 3px solid #7f8c8d;
-            border-radius: 5px;
-            padding: 15px;
-            box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+        .crt {
+            position: relative;
+            background: var(--crt);
+            border-radius: 14px;
+            padding: 18px;
+            box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.9), 0 0 0 4px #2b261f;
+            overflow: hidden;
+            cursor: text;
+        }
+
+        /* scanlines + vignette */
+        .crt::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background:
+                repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.22) 0 1px, transparent 1px 3px),
+                radial-gradient(ellipse at center, transparent 60%, rgba(0, 0, 0, 0.55));
+        }
+
+        .crt.drop { outline: 3px dashed var(--fg); outline-offset: -8px; }
+
+        .grid-box { container-type: inline-size; }
+
+        #screen, .inputline {
+            font-family: var(--pixel);
+            font-size: calc(100cqw / 40.5);
+            line-height: 1.3;
+            color: var(--fg);
+            text-shadow: 0 0 0.35em var(--glow);
         }
 
         #screen {
-            background-color: #000;
-            color: #00ff00;
-            font-family: 'Press Start 2P', cursive;
-            font-size: 12px;
-            line-height: 1.6;
-            padding: 10px;
-            height: 300px;
+            height: calc(24 * 1.3em);
             overflow-y: auto;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            min-width: 32ch; /* Ensure at least 32 characters wide */
+            white-space: pre;
+            overflow-x: hidden;
+            scrollbar-width: none;
         }
 
-        .keyboard-container {
-            flex: 1;
-            background-color: #34495e;
-            border: 3px solid #7f8c8d;
-            border-radius: 5px;
-            padding: 15px;
-        }
+        #screen::-webkit-scrollbar { display: none; }
 
-        .input-area {
+        .inputline {
             display: flex;
-            margin-bottom: 15px;
-            gap: 10px;
+            align-items: center;
+            gap: 0.5em;
+            margin-top: 0.5em;
+            padding-top: 0.5em;
+            border-top: 1px dashed color-mix(in srgb, var(--fg) 30%, transparent);
         }
 
-        #commandInput {
+        #prompt { flex: none; }
+        .busy #prompt { animation: blink 1s steps(1) infinite; }
+
+        #cmd {
             flex: 1;
-            background-color: #2c3e50;
-            border: 1px solid #7f8c8d;
-            color: #ecf0f1;
-            padding: 8px;
-            font-family: 'Press Start 2P', cursive;
-            font-size: 10px;
+            min-width: 0;
+            background: transparent;
+            border: 0;
+            outline: 0;
+            color: inherit;
+            font: inherit;
+            text-shadow: inherit;
+            caret-color: var(--fg);
+            text-transform: none;
+            font-size: max(16px, 1em);
         }
 
-        #runButton, #clearButton {
-            background-color: #3498db;
-            color: white;
-            border: none;
-            padding: 8px 15px;
+        #cmd::placeholder { color: color-mix(in srgb, var(--fg) 35%, transparent); }
+
+        @keyframes blink { 50% { opacity: 0; } }
+
+        .bezel-foot {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 4px 0;
+            color: #5c5240;
+            font-size: 8px;
+        }
+
+        .led {
+            display: inline-block;
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: #3a5a2e;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+
+        .led.on { background: #7dff4d; box-shadow: 0 0 6px #7dff4d; }
+        .led.wait { background: #ffb43a; box-shadow: 0 0 6px #ffb43a; }
+
+        /* ---- controls ---- */
+
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 16px;
+            align-items: center;
+        }
+
+        .toolbar .spacer { flex: 1; }
+
+        .btn, .key, select {
+            font-family: var(--pixel);
+            font-size: 9px;
+            color: var(--key-ink);
+            background: var(--key);
+            border: 0;
+            border-radius: 5px;
+            padding: 10px 12px;
             cursor: pointer;
-            font-family: 'Press Start 2P', cursive;
-            font-size: 10px;
+            box-shadow: 0 3px 0 var(--key-shade);
+            transition: transform 0.05s, box-shadow 0.05s;
         }
 
-        #runButton:hover, #clearButton:hover {
-            background-color: #2980b9;
+        .btn:active, .key:active { transform: translateY(3px); box-shadow: 0 0 0 var(--key-shade); }
+        .btn:focus-visible, .key:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+        .btn.primary { background: var(--accent); color: #fff4e8; box-shadow: 0 3px 0 var(--accent-shade); }
+        .btn.stop { background: #b8302a; color: #fff4e8; box-shadow: 0 3px 0 #6e1a16; }
+        .btn:disabled { opacity: 0.4; cursor: default; }
+
+        select { padding-right: 8px; max-width: 100%; }
+
+        .status {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-top: 14px;
+            font-size: 8px;
+            color: var(--ink-dim);
         }
+
+        .status b { color: var(--ink); font-weight: normal; }
+
+        /* ---- side panel ---- */
+
+        aside { display: flex; flex-direction: column; gap: 12px; }
+
+        details {
+            background: var(--panel);
+            border: 1px solid var(--panel-edge);
+            border-radius: 8px;
+            padding: 14px;
+        }
+
+        summary {
+            cursor: pointer;
+            color: var(--accent);
+            font-size: 10px;
+            list-style: none;
+        }
+
+        summary::-webkit-details-marker { display: none; }
+        summary::before { content: '▸ '; }
+        details[open] summary::before { content: '▾ '; }
 
         .keyboard {
             display: grid;
-            grid-template-columns: repeat(5, 1fr);
+            grid-template-columns: repeat(3, 1fr);
             gap: 8px;
+            margin-top: 12px;
         }
 
-        .key {
-            background-color: #7f8c8d;
-            color: #000;
-            border: none;
-            padding: 10px 5px;
-            text-align: center;
-            font-family: 'Press Start 2P', cursive;
-            cursor: pointer;
-            border-radius: 3px;
-            font-size: 8px;
+        .key { padding: 9px 2px; font-size: 8px; }
+        .key.cmd { background: #8fa38a; box-shadow: 0 3px 0 #5d6d59; }
+
+        .ref { margin-top: 12px; font-size: 8px; line-height: 2; color: var(--ink-dim); }
+        .ref h3 { color: var(--ink); font-size: 8px; font-weight: normal; margin-top: 8px; }
+        .ref code { color: var(--ink); font-family: inherit; }
+        kbd { font-family: inherit; color: var(--ink); background: #3a332a; padding: 1px 5px; border-radius: 3px; }
+
+        @media (max-width: 900px) {
+            .layout { grid-template-columns: minmax(0, 1fr); }
+            .keyboard { grid-template-columns: repeat(6, 1fr); }
         }
 
-        .key:hover {
-            background-color: #95a5a6;
-        }
-
-        .key.special {
-            background-color: #e74c3c;
-            color: white;
-        }
-
-        .key.special:hover {
-            background-color: #c0392b;
-        }
-
-        .key.function {
-            background-color: #f39c12;
-            color: white;
-        }
-
-        .key.function:hover {
-            background-color: #d35400;
-        }
-
-        .status-bar {
-            margin-top: 15px;
-            padding: 10px;
-            background-color: #2c3e50;
-            border: 1px solid #7f8c8d;
-            font-size: 10px;
-        }
-
-        .examples {
-            margin-top: 20px;
-            background-color: #34495e;
-            padding: 15px;
-            border-radius: 5px;
-        }
-
-        .examples h3 {
-            margin-bottom: 10px;
-            color: #3498db;
-            font-size: 14px;
-        }
-
-        .examples ul {
-            padding-left: 20px;
-        }
-
-        .examples li {
-            margin-bottom: 5px;
-            font-size: 10px;
-        }
-
-        footer {
-            text-align: center;
-            margin-top: 20px;
-            padding: 10px;
-            font-size: 8px;
-            color: #bdc3c7;
-        }
-
-        /* Mobile optimizations */
-        @media (max-width: 767px) {
-            .keyboard {
-                grid-template-columns: repeat(4, 1fr);
-            }
-            
-            #screen {
-                font-size: 10px;
-                height: 250px;
-            }
-            
-            h1 {
-                font-size: 1.5rem;
-            }
-            
-            .key {
-                padding: 8px 3px;
-                font-size: 0.8rem;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .keyboard {
-                grid-template-columns: repeat(3, 1fr);
-            }
-            
-            .input-area {
-                flex-direction: column;
-            }
-            
-            #lineNumber {
-                width: 100%;
-            }
+        @media (max-width: 560px) {
+            body { padding: 16px 12px 24px; }
+            .bezel { padding: 12px 12px 8px; border-radius: 12px; }
+            .crt { padding: 10px; border-radius: 10px; }
+            .keyboard { grid-template-columns: repeat(4, 1fr); }
+            .toolbar .spacer { display: none; }
+            select { flex: 1 1 100%; }
         }
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class="wrap">
         <header>
-            <h1>BASIC INTERPRETER</h1>
-            <p>Interpreting classic 8-bit BASIC</p>
+            <div>
+                <h1>BASIC<span>-40</span> INTERPRETER</h1>
+                <p class="tagline">Classic 8-bit BASIC in your browser</p>
+            </div>
+            <div class="phosphor" role="group" aria-label="Phosphor colour">
+                PHOSPHOR
+                <button data-p="green" title="Green" aria-pressed="true"></button>
+                <button data-p="amber" title="Amber" aria-pressed="false"></button>
+                <button data-p="white" title="White" aria-pressed="false"></button>
+            </div>
         </header>
 
-        <div class="interpreter-container">
-            <div class="screen-container">
-                <div id="screen">READY.
-NEW</div>
-                
-                <div class="input-area">
-                    <input type="text" id="commandInput" placeholder="Enter BASIC command">
+        <div class="layout">
+            <main>
+                <div class="bezel">
+                    <div class="crt" id="crt">
+                        <div class="grid-box">
+                            <pre id="screen" aria-live="polite"></pre>
+                            <div class="inputline">
+                                <span id="prompt">&gt;</span>
+                                <input id="cmd" type="text" autocomplete="off" autocorrect="off" autocapitalize="off"
+                                       spellcheck="false" aria-label="BASIC command" placeholder="TYPE HERE">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bezel-foot">
+                        <span>40 COLUMNS &middot; 24 ROWS</span>
+                        <span>POWER<span class="led on" id="led"></span></span>
+                    </div>
                 </div>
-                <div class="input-area">
-                    <button id="runButton">RUN</button>
-                    <button id="clearButton">CLR</button>
-                    <button id="saveFileButton">SAVE</button>
-                    <button id="loadFileButton">LOAD</button>
-                    <select id="examplePrograms">
-                        <option value="">Load Example Program</option>
-                        <option value="helloworld">Hello World</option>
-                        <option value="primes">First 10 Primes</option>
-                        <option value="factorial">Factorial Calculator</option>
-                        <option value="mandelbrot">Mandelbrot Fractal</option>
+
+                <div class="toolbar">
+                    <button class="btn primary" data-cmd="RUN">RUN</button>
+                    <button class="btn stop" id="stopBtn" disabled>STOP</button>
+                    <button class="btn" data-cmd="LIST">LIST</button>
+                    <button class="btn" data-cmd="CLS">CLS</button>
+                    <button class="btn" data-cmd="NEW">NEW</button>
+                    <span class="spacer"></span>
+                    <select id="examples" aria-label="Load example program">
+                        <option value="">EXAMPLES…</option>
                     </select>
+                    <button class="btn" id="openBtn" title="Open a .bas file">OPEN</button>
+                    <button class="btn" id="downloadBtn" title="Download program as .bas">DOWNLOAD</button>
                 </div>
-                <div class="status-bar">
-                    <span id="status">READY</span> | <span id="memory">MEM: 1000</span>
-                </div>
-            </div>
 
-            <div class="keyboard-container">
-                <div class="keyboard">
-                    <button class="key" data-key="PRINT">PRINT</button>
-                    <button class="key" data-key="AT">AT</button>
-                    <button class="key" data-key="INPUT">INPUT</button>
-                    <button class="key" data-key="LET">LET</button>
-                    <button class="key" data-key="GOTO">GOTO</button>
-                    <button class="key" data-key="GOSUB">GOSUB</button>
-                    <button class="key" data-key="RETURN">RETURN</button>
-                    <button class="key" data-key="IF">IF</button>
-                    <button class="key" data-key="THEN">THEN</button>
-                    <button class="key" data-key="FOR">FOR</button>
-                    <button class="key" data-key="TO">TO</button>
-                    <button class="key" data-key="STEP">STEP</button>
-                    <button class="key" data-key="NEXT">NEXT</button>
-                    <button class="key" data-key="REM">REM</button>
-                    <button class="key" data-key="END">END</button>
-                    <button class="key" data-key="LIST">LIST</button>
-                    <button class="key" data-key="NEW">NEW</button>
-                    <button class="key" data-key="RUN">RUN</button>
-                    <button class="key special" data-key="CLS">CLS</button>
-                    <button class="key special" data-key="CLR">CLR</button>
-                    <button class="key function" data-key="LOAD">LOAD</button>
-                    <button class="key function" data-key="SAVE">SAVE</button>
+                <div class="status">
+                    <span>STATE <b id="state">READY</b></span>
+                    <span>LINES <b id="lines">0</b></span>
+                    <span>BYTES <b id="bytes">0</b></span>
                 </div>
-            </div>
+            </main>
+
+            <aside>
+                <details open>
+                    <summary>KEYWORDS</summary>
+                    <div class="keyboard" id="keyboard"></div>
+                </details>
+                <details>
+                    <summary>REFERENCE</summary>
+                    <div class="ref">
+                        <h3>PROGRAM</h3>
+                        Type <code>10 PRINT "HI"</code> to store a line, a bare <code>10</code> deletes it.
+                        <h3>COMMANDS</h3>
+                        <code>RUN [n]  LIST [a-b]  NEW  CLS  CONT  CLEAR  SAVE name  LOAD name  KILL name  FILES  HELP</code>
+                        <h3>STATEMENTS</h3>
+                        <code>PRINT [AT r,c;] ... ; ,  INPUT ["p";] v  LET  IF..THEN..ELSE  FOR..TO..STEP / NEXT  WHILE / WEND  EXIT  GOTO  GOSUB / RETURN  ON x GOTO  DIM  READ / DATA / RESTORE  END  STOP  REM</code>
+                        <h3>FUNCTIONS</h3>
+                        <code>ABS SGN INT SQR SIN COS TAN ATN LOG EXP RND PI LEN VAL ASC CHR$ STR$ LEFT$ RIGHT$ MID$ INSTR UCASE$ LCASE$ STRING$ TAB SPC</code>
+                        <h3>OPERATORS</h3>
+                        <code>+ - * / ^ MOD  = &lt;&gt; &lt; &gt; &lt;= &gt;=  AND OR NOT</code>
+                    </div>
+                </details>
+                <details>
+                    <summary>SHORTCUTS</summary>
+                    <div class="ref">
+                        <kbd>ENTER</kbd> run line<br>
+                        <kbd>↑</kbd> <kbd>↓</kbd> command history<br>
+                        <kbd>ESC</kbd> / <kbd>CTRL+C</kbd> break<br>
+                        Paste a whole listing to enter it.<br>
+                        Drop a .bas file on the screen to load it.<br>
+                        Your program is kept between visits.
+                    </div>
+                </details>
+            </aside>
         </div>
-
-        <div class="examples">
-            <h3>Example Programs:</h3>
-            <ul>
-                <li>10 PRINT "HELLO WORLD"</li>
-                <li>20 FOR I = 1 TO 10</li>
-                <li>30 PRINT I</li>
-                <li>40 NEXT I</li>
-                <li>50 END</li>
-                <li>Then type RUN to execute</li>
-            </ul>
-        </div>
-
-        <footer>
-            <p>BASIC Interpreter - Inspired by ZX Spectrum and Atari 8-bit computers</p>
-        </footer>
     </div>
 
+    <script src="basic.js"></script>
     <script>
-        class BasicInterpreter {
-            constructor() {
-                this.program = {};
-                this.variables = {};
-                this.screen = document.getElementById('screen');
-                this.status = document.getElementById('status');
-                this.memory = document.getElementById('memory');
-                this.commandInput = document.getElementById('commandInput');
-                this.runButton = document.getElementById('runButton');
-                this.clearButton = document.getElementById('clearButton');
-                this.saveFileButton = document.getElementById('saveFileButton');
-                this.loadFileButton = document.getElementById('loadFileButton');
-                this.examplePrograms = document.getElementById('examplePrograms');
-                
-                // Example programs
-                this.exampleProgramsData = {
-                    helloworld: {
-                        10: 'PRINT "HELLO WORLD"',
-                        20: 'END'
-                    },
-                    primes: {
-                        10: 'REM CALCULATE FIRST 10 PRIME NUMBERS',
-                        20: 'LET N = 0',
-                        30: 'LET C = 2',
-                        40: 'IF N >= 10 THEN GOTO 150',
-                        50: 'LET P = 1',
-                        60: 'LET D = 2',
-                        70: 'IF D * D > C THEN GOTO 110',
-                        80: 'IF C / D = INT(C / D) THEN LET P = 0',
-                        90: 'LET D = D + 1',
-                        100: 'GOTO 70',
-                        110: 'IF P = 1 THEN PRINT C',
-                        120: 'IF P = 1 THEN LET N = N + 1',
-                        130: 'LET C = C + 1',
-                        140: 'GOTO 40',
-                        150: 'END'
-                    },
-                    factorial: {
-                        10: 'REM FACTORIAL CALCULATOR',
-                        20: 'INPUT N',
-                        30: 'LET F = 1',
-                        40: 'FOR I = 1 TO N',
-                        50: 'LET F = F * I',
-                        60: 'NEXT I',
-                        70: 'PRINT "FACTORIAL OF"; N; "IS"; F',
-                        80: 'END'
-                    },
-                    mandelbrot: {
-                        10: 'REM MANDELBROT FRACTAL',
-                        20: 'LET XMIN = -2',
-                        30: 'LET XMAX = 1',
-                        40: 'LET YMIN = -1',
-                        50: 'LET YMAX = 1',
-                        60: 'LET WIDTH = 30',
-                        70: 'LET HEIGHT = 20',
-                        80: 'FOR J = 0 TO HEIGHT',
-                        90: 'FOR I = 0 TO WIDTH',
-                        100: 'LET CX = XMIN + (XMAX - XMIN) * I / WIDTH',
-                        110: 'LET CY = YMIN + (YMAX - YMIN) * J / HEIGHT',
-                        120: 'LET ZX = 0',
-                        130: 'LET ZY = 0',
-                        140: 'LET ITER = 0',
-                        150: 'LET MAXITER = 30',
-                        160: 'FOR K = 0 TO MAXITER',
-                        170: 'IF ZX * ZX + ZY * ZY > 4 THEN GOTO 210',
-                        180: 'LET ZX2 = ZX * ZX - ZY * ZY + CX',
-                        190: 'LET ZY = 2 * ZX * ZY + CY',
-                        200: 'LET ZX = ZX2',
-                        210: 'NEXT K',
-                        220: 'IF K >= MAXITER THEN PRINT AT J, I, "*"',
-                        230: 'NEXT I',
-                        240: 'NEXT J',
-                        250: 'END'
-                    }
+        (() => {
+            const { Basic, Terminal, EXAMPLES } = window.BasicCore;
+            const AUTOSAVE_KEY = 'basic_autosave';
+            const PHOSPHOR_KEY = 'basic_phosphor';
+
+            const $ = id => document.getElementById(id);
+            const screen = $('screen');
+            const cmd = $('cmd');
+            const crt = $('crt');
+
+            const storage = {
+                get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+                set(k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } },
+                remove(k) { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } },
+                keys() { try { return Object.keys(localStorage); } catch (e) { return []; } }
+            };
+
+            const term = new Terminal(40, 24);
+            const basic = new Basic(term, storage);
+
+            // ---- rendering ----
+
+            let renderQueued = false;
+            function render() {
+                if (renderQueued) return;
+                renderQueued = true;
+                requestAnimationFrame(() => {
+                    renderQueued = false;
+                    screen.textContent = term.lines().join('\n');
+                    screen.scrollTop = screen.scrollHeight;
+                    updateStatus();
+                });
+            }
+
+            function updateStatus() {
+                const labels = { idle: 'READY', running: 'RUNNING', input: 'INPUT' };
+                $('state').textContent = labels[basic.state];
+                $('lines').textContent = Object.keys(basic.program).length;
+                $('bytes').textContent = basic.listing().length;
+                $('stopBtn').disabled = basic.state === 'idle';
+                $('led').className = 'led ' + (basic.state === 'idle' ? 'on' : basic.state === 'input' ? 'wait' : 'on');
+                crt.classList.toggle('busy', basic.state === 'running');
+                $('prompt').textContent = basic.state === 'input' ? '?' : '>';
+                cmd.placeholder = basic.state === 'input' ? 'ENTER VALUE' : basic.state === 'running' ? 'RUNNING… ESC TO BREAK' : 'TYPE HERE';
+            }
+
+            // ---- execution loop ----
+
+            let pumping = false;
+            function pump() {
+                if (pumping) return;
+                pumping = true;
+                const step = () => {
+                    const state = basic.runSlice(15);
+                    render();
+                    if (state === 'running') setTimeout(step, 0);
+                    else pumping = false;
                 };
-                
-                this.setupEventListeners();
-                this.updateMemory();
+                step();
             }
 
-            setupEventListeners() {
-                // Run button
-                this.runButton.addEventListener('click', () => this.runProgram());
-                
-                // Clear button
-                this.clearButton.addEventListener('click', () => this.clearScreen());
-                
-                // Save file button
-                this.saveFileButton.addEventListener('click', () => this.saveProgramToFile());
-                
-                // Load file button
-                this.loadFileButton.addEventListener('click', () => this.loadProgramFromFile());
-                
-                // Example programs dropdown
-                this.examplePrograms.addEventListener('change', (e) => this.loadExampleProgram(e.target.value));
-                
-                // Enter key in command input
-                this.commandInput.addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') {
-                        this.processCommand();
+            function execute(text) {
+                if (basic.state !== 'idle') basic.interrupt();
+                term.ensureNewline();
+                term.println(text);
+                basic.enter(text);
+                pump();
+                render();
+            }
+
+            basic.onProgramChange = () => {
+                storage.set(AUTOSAVE_KEY, basic.listing());
+                render();
+            };
+
+            // ---- command line ----
+
+            const history = [];
+            let historyPos = 0;
+
+            cmd.addEventListener('keydown', e => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const text = cmd.value;
+                    if (basic.state === 'input') {
+                        cmd.value = '';
+                        term.println(text);
+                        basic.provideInput(text);
+                        pump();
+                        render();
+                    } else if (basic.state === 'idle' && text.trim()) {
+                        cmd.value = '';
+                        if (history[history.length - 1] !== text) history.push(text);
+                        historyPos = history.length;
+                        execute(text);
                     }
-                });
-                
-                
-                // Keyboard buttons
-                document.querySelectorAll('.key').forEach(button => {
-                    button.addEventListener('click', () => {
-                        const key = button.getAttribute('data-key');
-                        this.insertKey(key);
-                    });
-                });
+                } else if (e.key === 'ArrowUp' && basic.state === 'idle') {
+                    e.preventDefault();
+                    if (historyPos > 0) cmd.value = history[--historyPos];
+                } else if (e.key === 'ArrowDown' && basic.state === 'idle') {
+                    e.preventDefault();
+                    historyPos = Math.min(history.length, historyPos + 1);
+                    cmd.value = history[historyPos] || '';
+                } else if (e.key.toLowerCase() === 'c' && e.ctrlKey && basic.state !== 'idle' && cmd.selectionStart === cmd.selectionEnd) {
+                    e.preventDefault();
+                    breakProgram();
+                }
+            });
+
+            cmd.addEventListener('paste', e => {
+                const text = e.clipboardData.getData('text');
+                if (!text.includes('\n') || basic.state !== 'idle') return;
+                e.preventDefault();
+                let count = 0;
+                for (const line of text.split(/\r?\n/)) {
+                    if (/^\s*\d+/.test(line)) { basic.enter(line); count++; }
+                }
+                term.ensureNewline();
+                term.println(`${count} LINES ENTERED`);
+                render();
+            });
+
+            function breakProgram() {
+                basic.interrupt();
+                render();
             }
 
-            insertKey(key) {
-                const input = this.commandInput;
-                const start = input.selectionStart;
-                const end = input.selectionEnd;
-                const value = input.value;
-                
-                // Insert the key at cursor position
-                input.value = value.substring(0, start) + key + ' ' + value.substring(end);
-                
-                // Move cursor to after the inserted text
-                const newPos = start + key.length + 1;
-                input.setSelectionRange(newPos, newPos);
-                input.focus();
-            }
+            document.addEventListener('keydown', e => {
+                if (e.key === 'Escape') breakProgram();
+            });
 
-            /**
-             * Process user input command
-             * - If command starts with a number, treat as program line
-             * - Otherwise execute as immediate command
-             */
-            processCommand() {
-                let command = this.commandInput.value.trim();
-                
-                // Check if command starts with a line number
-                let actualLineNum = null;
-                if (command) {
-                    // Extract line number from the beginning of the command
-                    const match = command.match(/^(\d+)\s+(.*)/);
-                    if (match) {
-                        actualLineNum = match[1];
-                        command = match[2];
-                    }
-                }
-                
-                if (actualLineNum && command) {
-                    // Store as program line (convert only keywords to uppercase)
-                    const upperCommand = this.convertKeywordsToUppercase(command);
-                    this.program[parseInt(actualLineNum)] = upperCommand;
-                    this.printToScreen(`${actualLineNum} ${upperCommand}`);
-                    this.printToScreen("OK.");
-                    this.commandInput.value = '';
-                } else if (command) {
-                    // Execute immediate command (convert only keywords to uppercase)
-                    const upperCommand = this.convertKeywordsToUppercase(command);
-                    this.executeCommand(upperCommand);
-                    // Only print OK for successful commands that don't produce output
-                    if (this.status.textContent === 'READY' && !['LIST', 'RUN', 'NEW', 'CLS', 'CLEAR'].includes(upperCommand.split(' ')[0].toUpperCase())) {
-                        this.printToScreen("OK.");
-                    }
-                    this.commandInput.value = '';
-                }
-                
-                this.updateMemory();
-            }
+            crt.addEventListener('click', () => {
+                if (!window.getSelection().toString()) cmd.focus();
+            });
 
-            /**
-             * Convert only BASIC keywords and commands to uppercase
-             * Preserves case of arguments and string literals
-             * @param {string} command - The command to process
-             * @returns {string} - Command with keywords in uppercase
-             */
-            convertKeywordsToUppercase(command) {
-                // Split command into tokens
-                const tokens = command.split(' ');
-                if (tokens.length === 0) return command;
-                
-                // List of BASIC keywords to convert to uppercase
-                const keywords = [
-                    'PRINT', 'INPUT', 'LET', 'GOTO', 'GOSUB', 'RETURN', 'IF', 'THEN', 'FOR', 'TO', 'STEP', 
-                    'NEXT', 'REM', 'END', 'LIST', 'NEW', 'RUN', 'CLS', 'CLEAR', 'LOAD', 'SAVE', 'AT'
-                ];
-                
-                // Convert first token (command) if it's a keyword
-                if (keywords.includes(tokens[0].toUpperCase())) {
-                    tokens[0] = tokens[0].toUpperCase();
-                }
-                
-                // Handle special cases for multi-word commands
-                if (tokens.length >= 2) {
-                    if (tokens[0].toUpperCase() === 'CLS' && tokens[1].toUpperCase() === 'CLEAR') {
-                        tokens[0] = 'CLS';
-                        tokens[1] = 'CLEAR';
-                    }
-                }
-                
-                return tokens.join(' ');
-            }
+            // ---- toolbar ----
 
-            /**
-             * Execute an immediate command (not part of a program)
-             * @param {string} command - The command to execute
-             */
-            /**
-             * Print a syntax error message to the screen
-             * @param {string} lineNum - Optional line number where error occurred
-             */
-            printSyntaxError(lineNum = null) {
-                if (lineNum !== null) {
-                    this.printToScreen(`?SYNTAX ERROR IN LINE ${lineNum}`);
-                } else if (this.status.textContent === 'RUNNING' && this.sortedLines && this.currentLineIndex < this.sortedLines.length) {
-                    // Use current line number when running a program
-                    const currentLineNum = this.sortedLines[this.currentLineIndex];
-                    this.printToScreen(`?SYNTAX ERROR IN LINE ${currentLineNum}`);
-                } else {
-                    this.printToScreen(`?SYNTAX ERROR`);
-                }
-                
-                // If a program is running, stop it
-                if (this.status.textContent === 'RUNNING') {
-                    this.status.textContent = 'READY';
-                    this.currentLineIndex = this.sortedLines.length; // Terminate program execution
-                }
-            }
+            document.querySelectorAll('[data-cmd]').forEach(btn => {
+                btn.addEventListener('click', () => { execute(btn.dataset.cmd); cmd.focus(); });
+            });
 
-            executeCommand(command) {
-                // Extract command part and argument part
-                let cmdPart = command;
-                let argPart = '';
-                
-                // Log the command being executed
-                console.log('Executing command:', { command, cmdPart, argPart });
-                
-                // Find the first space to separate command from arguments
-                const firstSpace = command.indexOf(' ');
-                if (firstSpace > 0) {
-                    cmdPart = command.substring(0, firstSpace);
-                    argPart = command.substring(firstSpace + 1);
-                }
-                
-                const upperCmd = cmdPart.toUpperCase();
-                
-                if (upperCmd === 'NEW') {
-                    console.log('NEW command executed');
-                    this.newProgram();
-                } else if (upperCmd === 'LIST') {
-                    console.log('LIST command executed');
-                    this.listProgram();
-                } else if (upperCmd === 'RUN') {
-                    console.log('RUN command executed');
-                    this.runProgram();
-                } else if (upperCmd === 'CLS' || upperCmd === 'CLEAR') {
-                    console.log('CLS/CLEAR command executed');
-                    this.clearScreen();
-                } else if (upperCmd === 'PRINT') {
-                    console.log('PRINT command executed:', argPart);
-                    this.executePrint(argPart);
-                } else if (upperCmd === 'AT') {
-                    console.log('AT command executed:', argPart);
-                    this.executeAt(argPart);
-                } else if (upperCmd === 'LET') {
-                    console.log('LET command executed:', argPart);
-                    this.executeLet(argPart);
-                } else if (upperCmd === 'SAVE') {
-                    console.log('SAVE command executed:', argPart || 'default');
-                    // Handle quoted string or plain name
-                    const programName = this.extractStringLiteral(argPart) || argPart || 'default';
-                    this.saveProgram(programName);
-                } else if (upperCmd === 'LOAD') {
-                    console.log('LOAD command executed:', argPart || 'default');
-                    // Handle quoted string or plain name
-                    const programName = this.extractStringLiteral(argPart) || argPart || 'default';
-                    this.loadProgram(programName);
-                } else if (upperCmd === 'INPUT') {
-                    console.log('INPUT command executed:', argPart);
-                    this.executeInput(argPart);
-                } else if (upperCmd === 'GOSUB') {
-                    console.log('GOSUB command executed:', argPart);
-                    this.executeGosub(argPart);
-                } else if (upperCmd === 'RETURN') {
-                    console.log('RETURN command executed');
-                    this.executeReturn();
-                } else if (upperCmd === 'REM') {
-                    console.log('REM command executed:', argPart);
-                    // Comment - do nothing
-                } else if (upperCmd === 'END') {
-                    console.log('END command executed');
-                    this.printToScreen("END");
-                } else {
-                    console.log('Unknown command or syntax error:', command);
-                    this.printSyntaxError();
-                }
-                
-                this.status.textContent = 'READY';
-            }
+            $('stopBtn').addEventListener('click', () => { breakProgram(); cmd.focus(); });
 
-            /**
-             * Execute PRINT command
-             * Handles string literals, variables, expressions, and semicolon/comma-separated lists
-             * @param {string} expression - The expression to print
-             */
-            executePrint(expression) {
-                console.log('Executing PRINT with expression:', expression);
-                
-                // Check if this is a PRINT AT command
-                const upperExpression = expression.toUpperCase();
-                if (upperExpression.startsWith('AT ')) {
-                    console.log('PRINT AT command detected');
-                    return this.executePrintAt(expression.substring(3));
-                }
-                
-                // Handle regular PRINT command
-                // Handle semicolon and comma-separated expressions
-                // Semicolon concatenates with space, comma adds extra space
-                let output = '';
-                let firstItem = true;
-                let i = 0;
-                
-                while (i < expression.length) {
-                    // Skip whitespace
-                    while (i < expression.length && expression[i] === ' ') {
-                        i++;
-                    }
-                    
-                    if (i >= expression.length) break;
-                    
-                    // Check for separator at current position
-                    if (expression[i] === ',' || expression[i] === ';') {
-                        const separator = expression[i];
-                        i++;
-                        
-                        // Add appropriate spacing
-                        if (separator === ',') {
-                            output += '  '; // Two spaces for comma
-                        } else {
-                            output += ' '; // One space for semicolon
-                        }
-                        firstItem = false;
-                        continue;
-                    }
-                    
-                    // Add space before non-first items if no separator was used
-                    if (!firstItem) {
-                        output += ' ';
-                    }
-                    firstItem = false;
-                    
-                    // Parse a field (string literal or expression)
-                    if (expression[i] === '"') {
-                        // String literal
-                        i++; // Skip opening quote
-                        const start = i;
-                        while (i < expression.length && expression[i] !== '"') {
-                            i++;
-                        }
-                        const strValue = expression.substring(start, i);
-                        output += strValue;
-                        if (i < expression.length) i++; // Skip closing quote
-                    } else {
-                        // Expression (could be variable or arithmetic)
-                        const start = i;
-                        while (i < expression.length && expression[i] !== ',' && expression[i] !== ';') {
-                            i++;
-                        }
-                        const expr = expression.substring(start, i).trim();
-                        
-                        if (expr) {
-                            // Try to evaluate as expression first
-                            const result = this.evaluateExpression(expr);
-                            if (result !== null) {
-                                output += result;
-                            } else {
-                                // Variable or number
-                                const varName = expr.toUpperCase(); // Variables should be uppercase
-                                if (this.variables[varName] !== undefined) {
-                                    output += this.variables[varName];
-                                } else if (!isNaN(expr)) {
-                                    output += expr;
-                                } else {
-                                    output += `?VARIABLE NOT DEFINED`;
-                                }
-                            }
-                        }
-                    }
-                }
-                
-                this.printToScreen(output);
+            const exampleSelect = $('examples');
+            for (const [id, ex] of Object.entries(EXAMPLES)) {
+                exampleSelect.add(new Option(ex.title.toUpperCase(), id));
             }
+            exampleSelect.addEventListener('change', () => {
+                const ex = EXAMPLES[exampleSelect.value];
+                exampleSelect.selectedIndex = 0;
+                if (!ex) return;
+                if (basic.state !== 'idle') basic.interrupt();
+                basic.loadText(ex.src);
+                term.ensureNewline();
+                term.println(`LOADED ${ex.title.toUpperCase()}`);
+                term.println('TYPE RUN OR LIST');
+                render();
+                cmd.focus();
+            });
 
-            /**
-             * Execute PRINT AT command for positioning text
-             * @param {string} expression - The expression with position and text
-             */
-            executePrintAt(expression) {
-                console.log('Executing PRINT AT with expression:', expression);
-                
-                // Parse: PRINT AT row, column, text
-                const parts = expression.split(',');
-                if (parts.length < 3) {
-                    console.log('PRINT AT syntax error: insufficient arguments');
-                    this.printSyntaxError();
-                    return;
-                }
-                
-                const rowExpr = parts[0].trim();
-                const colExpr = parts[1].trim();
-                const textExpr = parts.slice(2).join(',').trim();
-                
-                console.log('PRINT AT parsed parts:', { rowExpr, colExpr, textExpr });
-                
-                // Evaluate row and column
-                const row = this.evaluateExpression(rowExpr);
-                const col = this.evaluateExpression(colExpr);
-                
-                console.log('PRINT AT evaluated values:', { row, col });
-                
-                if (row === null || col === null) {
-                    console.log('PRINT AT evaluation error: invalid row or column');
-                    this.printSyntaxError();
-                    return;
-                }
-                
-                // For simplicity, we'll just print the text normally since we don't have
-                // actual screen positioning in this implementation
-                // In a real implementation, this would position the cursor
-                this.executePrint(textExpr);
-            }
-
-            /**
-             * Execute LET command to assign values to variables
-             * @param {string} expression - The assignment expression (e.g., "A = 10")
-             */
-            executeLet(expression) {
-                console.log('Executing LET with expression:', expression);
-                
-                // Simple LET implementation
-                const parts = expression.split('=');
-                if (parts.length === 2) {
-                    const varName = parts[0].trim().toUpperCase(); // Variable names should be uppercase
-                    const valueExpr = parts[1].trim();
-                    
-                    console.log('LET assignment:', { varName, valueExpr });
-                    
-                    // Try to evaluate value expression
-                    if (valueExpr.startsWith('"') && valueExpr.endsWith('"')) {
-                        // String - preserve case
-                        const stringValue = valueExpr.substring(1, valueExpr.length - 1);
-                        this.variables[varName] = stringValue;
-                        console.log('Assigned string value:', { varName, value: stringValue });
-                    } else {
-                        // Try to evaluate as arithmetic expression
-                        const result = this.evaluateExpression(valueExpr);
-                        if (result !== null) {
-                            this.variables[varName] = result;
-                            console.log('Assigned numeric value:', { varName, value: result });
-                        } else {
-                            console.log('LET evaluation error: invalid expression');
-                            this.printSyntaxError();
-                            return;
-                        }
-                    }
-                } else {
-                    console.log('LET syntax error: invalid format');
-                    this.printSyntaxError();
-                }
-            }
-
-            /**
-             * Execute AT command (standalone)
-             * @param {string} expression - The position expression (e.g., "10, 5")
-             */
-            executeAt(expression) {
-                console.log('Executing standalone AT with expression:', expression);
-                
-                // Parse AT row, column
-                const parts = expression.split(',');
-                if (parts.length < 2) {
-                    console.log('AT syntax error: insufficient arguments');
-                    this.printSyntaxError();
-                    return;
-                }
-                
-                const rowExpr = parts[0].trim();
-                const colExpr = parts[1].trim();
-                
-                console.log('AT parsed parts:', { rowExpr, colExpr });
-                
-                // Evaluate row and column
-                const row = this.evaluateExpression(rowExpr);
-                const col = this.evaluateExpression(colExpr);
-                
-                if (row === null || col === null) {
-                    console.log('AT evaluation error: invalid row or column');
-                    this.printSyntaxError();
-                    return;
-                }
-                
-                // For simplicity, we'll just acknowledge the command
-                // In a real implementation, this would position the cursor
-                this.printToScreen(`POSITION SET TO ROW ${row}, COLUMN ${col}`);
-            }
-
-            newProgram() {
-                console.log('NEW command: clearing program and variables');
-                this.program = {};
-                this.variables = {};
-                this.clearScreen();
-                this.printToScreen("NEW");
-            }
-
-            /**
-             * Extract string literal from quoted text
-             * @param {string} text - Text that may contain quoted string
-             * @returns {string|null} - Extracted string or null if not found
-             */
-            extractStringLiteral(text) {
-                if (!text) return null;
-                
-                const trimmed = text.trim();
-                if (trimmed.startsWith('"') && trimmed.endsWith('"') && trimmed.length >= 2) {
-                    return trimmed.substring(1, trimmed.length - 1);
-                }
-                return null;
-            }
-
-            /**
-             * Save program to localStorage with case-insensitive name
-             * @param {string} name - Program name (defaults to 'default')
-             */
-            saveProgram(name = 'default') {
-                console.log('Saving program:', name);
-                try {
-                    const data = {
-                        program: this.program,
-                        variables: this.variables
-                    };
-                    const lowerName = name.toLowerCase();
-                    localStorage.setItem(`basic_program_${lowerName}`, JSON.stringify(data));
-                    this.printToScreen(`PROGRAM SAVED AS "${name}"`);
-                    console.log('Program saved successfully');
-                } catch (e) {
-                    console.error('Save error:', e);
-                    this.printToScreen(`?SAVE ERROR: ${e.message}`);
-                }
-            }
-
-            /**
-             * Load program from localStorage with case-insensitive name
-             * @param {string} name - Program name (defaults to 'default')
-             */
-            loadProgram(name = 'default') {
-                console.log('Loading program:', name);
-                try {
-                    const lowerName = name.toLowerCase();
-                    const data = localStorage.getItem(`basic_program_${lowerName}`);
-                    if (data) {
-                        const parsed = JSON.parse(data);
-                        this.program = parsed.program || {};
-                        this.variables = parsed.variables || {};
-                        this.printToScreen(`PROGRAM "${name}" LOADED`);
-                        this.updateMemory();
-                        console.log('Program loaded successfully');
-                    } else {
-                        console.log('Program not found');
-                        this.printToScreen(`?PROGRAM "${name}" NOT FOUND`);
-                    }
-                } catch (e) {
-                    console.error('Load error:', e);
-                    this.printToScreen(`?LOAD ERROR: ${e.message}`);
-                }
-            }
-
-            listProgram() {
-                const lines = Object.keys(this.program)
-                    .sort((a, b) => parseInt(a) - parseInt(b))
-                    .map(key => `${key} ${this.program[key]}`);
-                
-                if (lines.length > 0) {
-                    lines.forEach(line => this.printToScreen(line));
-                } else {
-                    this.printToScreen("(EMPTY)");
-                }
-            }
-
-            /**
-             * Run the stored program line by line
-             * Executes each line with a small delay for demonstration
-             */
-            runProgram() {
-                console.log('RUN command: starting program execution');
-                this.status.textContent = 'RUNNING';
-                this.printToScreen("RUN");
-                
-                // Initialize program execution state
-                this.sortedLines = Object.keys(this.program)
-                    .sort((a, b) => parseInt(a) - parseInt(b));
-                
-                // Create a map of line numbers to indices for quick lookup
-                this.lineMap = {};
-                this.sortedLines.forEach((lineNum, index) => {
-                    this.lineMap[parseInt(lineNum)] = index;
-                });
-                
-                this.currentLineIndex = 0;
-                this.executeNextLine();
-            }
-
-            /**
-             * Execute the next line in the program
-             */
-            executeNextLine() {
-                if (this.currentLineIndex >= this.sortedLines.length) {
-                    console.log('Program execution completed');
-                    this.status.textContent = 'READY';
-                    this.printToScreen("READY.");
-                    return;
-                }
-                
-                const lineNum = this.sortedLines[this.currentLineIndex];
-                const command = this.program[lineNum];
-                
-                console.log('Executing program line:', { lineNum, command });
-                
-                const result = this.executeProgramLine(lineNum, command);
-                
-                // Only increment if no GOTO was executed and no special handling
-                if (result !== false && this.currentLineIndex === parseInt(this.sortedLines.indexOf(lineNum))) {
-                    this.currentLineIndex++;
-                }
-                
-                // For demonstration purposes, we'll add a small delay
-                if (result !== false) {
-                    setTimeout(() => this.executeNextLine(), 10);
-                }
-            }
-
-            /**
-             * Execute a single line of a stored program
-             * @param {string} lineNum - Line number
-             * @param {string} command - Command to execute
-             */
-            executeProgramLine(lineNum, command) {
-                // Extract command part and argument part
-                let cmdPart = command;
-                let argPart = '';
-                
-                // Find the first space to separate command from arguments
-                const firstSpace = command.indexOf(' ');
-                if (firstSpace > 0) {
-                    cmdPart = command.substring(0, firstSpace);
-                    argPart = command.substring(firstSpace + 1);
-                }
-                
-                const upperCmd = cmdPart.toUpperCase();
-                
-                if (upperCmd === 'PRINT') {
-                    this.executePrint(argPart);
-                } else if (upperCmd === 'LET') {
-                    this.executeLet(argPart);
-                } else if (upperCmd === 'INPUT') {
-                    // Handle INPUT with special async flow
-                    this.handleInputCommand(argPart, lineNum);
-                    return false; // Indicate special handling
-                } else if (upperCmd === 'FOR') {
-                    this.executeFor(argPart, lineNum);
-                } else if (upperCmd === 'NEXT') {
-                    this.executeNext();
-                } else if (upperCmd === 'GOSUB') {
-                    this.executeGosub(argPart, lineNum);
-                } else if (upperCmd === 'RETURN') {
-                    this.executeReturn();
-                } else if (upperCmd === 'REM') {
-                    // Comment - do nothing
-                } else if (upperCmd === 'GOTO') {
-                    this.executeGoto(argPart);
-                } else if (upperCmd === 'IF') {
-                    this.executeIf(argPart);
-                } else if (upperCmd === 'END') {
-                    this.printToScreen("END");
-                    this.status.textContent = 'READY';
-                } else {
-                    this.printSyntaxError(lineNum);
-                }
-            }
-
-            /**
-             * Execute FOR loop command
-             * @param {string} expression - Loop definition (e.g., "I = 1 TO 10")
-             * @param {string} lineNum - Current line number
-             */
-            executeFor(expression, lineNum) {
-                // Parse FOR expression: variable = start TO end [STEP step]
-                const toIndex = expression.toUpperCase().indexOf(' TO ');
-                if (toIndex === -1) {
-                    this.printSyntaxError(lineNum);
-                    return;
-                }
-                
-                const varPart = expression.substring(0, toIndex).trim();
-                let stepPart = '1'; // Default step
-                
-                // Check for STEP
-                const stepIndex = expression.toUpperCase().indexOf(' STEP ');
-                let toPart;
-                if (stepIndex !== -1) {
-                    toPart = expression.substring(toIndex + 4, stepIndex).trim();
-                    stepPart = expression.substring(stepIndex + 6).trim();
-                } else {
-                    toPart = expression.substring(toIndex + 4).trim();
-                }
-                
-                // Parse variable assignment
-                const equalsIndex = varPart.indexOf('=');
-                if (equalsIndex === -1) {
-                    this.printSyntaxError(lineNum);
-                    return;
-                }
-                
-                const varName = varPart.substring(0, equalsIndex).trim().toUpperCase();
-                const startExpr = varPart.substring(equalsIndex + 1).trim();
-                
-                // Evaluate expressions
-                const startValue = this.evaluateExpression(startExpr);
-                const toValue = this.evaluateExpression(toPart);
-                const stepValue = this.evaluateExpression(stepPart);
-                
-                if (startValue === null || toValue === null || stepValue === null) {
-                    this.printSyntaxError(lineNum);
-                    return;
-                }
-                
-                // Store loop information
-                if (!this.loops) this.loops = [];
-                this.loops.push({
-                    varName: varName,
-                    toValue: toValue,
-                    stepValue: stepValue,
-                    lineNum: parseInt(lineNum)
-                });
-                
-                // Set loop variable
-                this.variables[varName] = startValue;
-            }
-
-            /**
-             * Execute NEXT command to continue loop
-             */
-            executeNext() {
-                if (!this.loops || this.loops.length === 0) {
-                    this.printSyntaxError();
-                    return;
-                }
-                
-                // Get current loop info
-                const loop = this.loops[this.loops.length - 1];
-                const varName = loop.varName;
-                const currentValue = this.variables[varName];
-                
-                // Update loop variable
-                this.variables[varName] = currentValue + loop.stepValue;
-                const newValue = this.variables[varName];
-                
-                // Check if loop should continue
-                let shouldContinue = false;
-                if (loop.stepValue > 0) {
-                    shouldContinue = newValue <= loop.toValue;
-                } else {
-                    shouldContinue = newValue >= loop.toValue;
-                }
-                
-                if (!shouldContinue) {
-                    // Loop finished, remove from stack
-                    this.loops.pop();
-                } else {
-                    // Jump back to the line after the FOR statement
-                    // Find the FOR statement line and jump to the next line
-                    const forLineIndex = this.lineMap[loop.lineNum];
-                    if (forLineIndex !== undefined && forLineIndex + 1 < this.sortedLines.length) {
-                        this.currentLineIndex = forLineIndex + 1;
-                    }
-                }
-            }
-
-            /**
-             * Execute GOTO command to jump to a line number
-             * @param {string} lineNum - Target line number
-             */
-            executeGoto(lineNum) {
-                const targetLine = parseInt(lineNum.trim());
-                if (isNaN(targetLine)) {
-                    this.printSyntaxError();
-                    return;
-                }
-                
-                // Check if line exists
-                if (this.lineMap[targetLine] === undefined) {
-                    this.printSyntaxError();
-                    return;
-                }
-                
-                // Set the current line index to jump to the target line
-                this.currentLineIndex = this.lineMap[targetLine];
-            }
-
-            /**
-             * Execute GOSUB command to call a subroutine
-             * @param {string} lineNum - Target line number
-             * @param {string} currentLine - Current line number (for program execution)
-             */
-            executeGosub(lineNum, currentLine = null) {
-                const targetLine = parseInt(lineNum.trim());
-                if (isNaN(targetLine)) {
-                    this.printSyntaxError();
-                    return;
-                }
-                
-                // Check if line exists
-                if (this.lineMap[targetLine] === undefined) {
-                    this.printSyntaxError();
-                    return;
-                }
-                
-                // Initialize call stack if it doesn't exist
-                if (!this.callStack) this.callStack = [];
-                
-                // Push return address onto call stack
-                // For immediate execution, we don't have a return address
-                // For program execution, we push the next line index
-                if (currentLine !== null) {
-                    const currentIndex = this.lineMap[parseInt(currentLine)];
-                    this.callStack.push(currentIndex + 1);
-                } else {
-                    // For immediate execution, push a special marker
-                    this.callStack.push(-1);
-                }
-                
-                // Jump to the target line
-                this.currentLineIndex = this.lineMap[targetLine];
-            }
-
-            /**
-             * Execute RETURN command to return from a subroutine
-             */
-            executeReturn() {
-                // Check if call stack exists and is not empty
-                if (!this.callStack || this.callStack.length === 0) {
-                    this.printToScreen(`?RETURN WITHOUT GOSUB`);
-                    return;
-                }
-                
-                // Pop return address from call stack
-                const returnIndex = this.callStack.pop();
-                
-                // If returnIndex is -1, it was called from immediate mode
-                if (returnIndex === -1) {
-                    // Do nothing, just return to immediate mode
-                    return;
-                }
-                
-                // Jump to return address
-                this.currentLineIndex = returnIndex;
-            }
-
-            /**
-             * Execute IF command to handle conditional execution
-             * Evaluates a condition and executes the command if the condition is true
-             * @param {string} expression - The IF expression (e.g., "A = 5 THEN PRINT 'YES'")
-             */
-            executeIf(expression) {
-                // Parse IF expression: condition THEN command
-                const thenIndex = expression.toUpperCase().indexOf(' THEN ');
-                if (thenIndex === -1) {
-                    this.printSyntaxError();
-                    return;
-                }
-                
-                const condition = expression.substring(0, thenIndex).trim();
-                const command = expression.substring(thenIndex + 6).trim();
-                
-                // Evaluate condition (simple numeric comparison)
-                if (this.evaluateCondition(condition)) {
-                    this.executeCommand(command);
-                }
-            }
-
-            /**
-             * Evaluate a condition for IF statements
-             * @param {string} condition - The condition to evaluate
-             * @returns {boolean} - True if condition is met
-             */
-            evaluateCondition(condition) {
-                // Handle simple comparisons: A = B, A < B, A > B
-                const operators = ['>=', '<=', '<>', '>', '<', '='];
-                let operator = '';
-                let opIndex = -1;
-                
-                // Find the operator (check longer ones first)
-                for (const op of operators) {
-                    opIndex = condition.indexOf(op);
-                    if (opIndex !== -1) {
-                        operator = op;
-                        break;
-                    }
-                }
-                
-                if (opIndex === -1) {
-                    // Just a single value - check if non-zero
-                    const value = this.evaluateExpression(condition);
-                    return value !== null && value !== 0;
-                }
-                
-                const leftExpr = condition.substring(0, opIndex).trim();
-                const rightExpr = condition.substring(opIndex + operator.length).trim();
-                
-                const leftValue = this.evaluateExpression(leftExpr);
-                const rightValue = this.evaluateExpression(rightExpr);
-                
-                if (leftValue === null || rightValue === null) {
-                    return false;
-                }
-                
-                switch (operator) {
-                    case '=': return leftValue === rightValue;
-                    case '<>': return leftValue !== rightValue;
-                    case '<': return leftValue < rightValue;
-                    case '>': return leftValue > rightValue;
-                    case '<=': return leftValue <= rightValue;
-                    case '>=': return leftValue >= rightValue;
-                    default: return false;
-                }
-            }
-
-            /**
-             * Handle INPUT command with proper user input waiting
-             * @param {string} expression - Variable name to store input
-             * @param {string} lineNum - Current line number
-             */
-            handleInputCommand(expression, lineNum) {
-                const varName = expression.trim().toUpperCase();
-                if (!varName) {
-                    this.printSyntaxError(lineNum);
-                    this.currentLineIndex++;
-                    setTimeout(() => this.executeNextLine(), 10);
-                    return;
-                }
-                
-                // Store original placeholder
-                const originalPlaceholder = this.commandInput.placeholder;
-                
-                // Function to handle input prompt
-                const promptForInput = () => {
-                    // Print input prompt
-                    this.printToScreen(`?INPUT ${varName}`);
-                    
-                    // Use the existing commandInput for user input
-                    this.commandInput.placeholder = `Enter value for ${varName}`;
-                    this.commandInput.focus();
+            function loadFile(file) {
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = () => {
+                    if (basic.state !== 'idle') basic.interrupt();
+                    const count = basic.loadText(String(reader.result));
+                    term.ensureNewline();
+                    term.println(`LOADED ${file.name.toUpperCase()}`);
+                    term.println(`${count} LINES`);
+                    render();
                 };
-                
-                // Initial prompt
-                promptForInput();
-                
-                // Handle input submission through the existing event listener
-                const handleInput = (e) => {
-                    if (e.key === 'Enter') {
-                        const inputValue = this.commandInput.value.trim();
-                        
-                        // Validate that input is numeric
-                        if (inputValue === '' || isNaN(inputValue)) {
-                            // Show error and keep focus on input field
-                            this.printToScreen(`?REDO FROM START`);
-                            this.commandInput.value = ''; // Clear invalid input
-                            promptForInput(); // Re-prompt
-                            return;
-                        }
-                        
-                        // Store as number
-                        this.variables[varName] = parseFloat(inputValue);
-                        
-                        // Clear input and reset placeholder
-                        this.commandInput.value = '';
-                        this.commandInput.placeholder = originalPlaceholder;
-                        
-                        // Remove this event listener to avoid conflicts
-                        this.commandInput.removeEventListener('keypress', handleInput);
-                        
-                        // Continue program execution
-                        this.currentLineIndex++;
-                        setTimeout(() => this.executeNextLine(), 10);
-                    }
-                };
-                
-                // Add temporary event listener for this input
-                this.commandInput.addEventListener('keypress', handleInput);
+                reader.readAsText(file);
             }
 
-            /**
-             * Evaluate arithmetic expressions with variables and numbers
-             * @param {string} expr - The expression to evaluate
-             * @returns {number|null} - The result or null if invalid
-             */
-            evaluateExpression(expr) {
-                console.log('Evaluating expression:', expr);
-                
-                // Handle built-in functions first
-                if (expr.toUpperCase().startsWith('RND')) {
-                    return Math.random();
-                }
-                
-                if (expr.toUpperCase().startsWith('INT(') && expr.endsWith(')')) {
-                    const inner = expr.substring(4, expr.length - 1);
-                    const value = this.evaluateExpression(inner);
-                    return value !== null ? Math.floor(value) : null;
-                }
-                
-                // Remove spaces
-                expr = expr.replace(/\s+/g, '');
-                
-                // Simple expression evaluator for +, -, *, / operations
-                try {
-                    // Replace variables with their values
-                    let processedExpr = expr;
-                    
-                    // Match variable names (letters followed by optional letters/digits)
-                    // Sort by length descending to avoid partial replacements
-                    const varNames = Object.keys(this.variables)
-                        .sort((a, b) => b.length - a.length);
-                    
-                    console.log('Variables available:', this.variables);
-                    console.log('Variable names to replace:', varNames);
-                    
-                    for (const varName of varNames) {
-                        // Replace all instances of this variable with its value
-                        // Use word boundaries to avoid partial matches
-                        const regex = new RegExp('\\b' + varName + '\\b', 'g');
-                        const oldValue = this.variables[varName];
-                        console.log(`Replacing ${varName} with ${oldValue}`);
-                        // Convert to string and handle special cases
-                        const replacement = String(oldValue);
-                        processedExpr = processedExpr.replace(regex, replacement);
-                    }
-                    
-                    console.log('Processed expression:', processedExpr);
-                    
-                    // Handle empty expressions
-                    if (processedExpr === '') {
-                        return null;
-                    }
-                    
-                    // Validate that the expression only contains safe characters
-                    if (!/^[0-9+\-*/.() ]+$/.test(processedExpr)) {
-                        console.log('Expression contains invalid characters');
-                        return null;
-                    }
-                    
-                    // Evaluate the expression using Function constructor
-                    // This respects parentheses and order of operations
-                    const result = Function('"use strict"; return (' + processedExpr + ')')();
-                    console.log('Expression result:', result);
-                    return typeof result === 'number' && !isNaN(result) ? result : null;
-                } catch (e) {
-                    console.log('Expression evaluation error:', e);
-                    return null; // Invalid expression
-                }
-            }
-
-            printToScreen(text) {
-                this.screen.textContent += '\n' + text;
-                this.screen.scrollTop = this.screen.scrollHeight;
-            }
-
-            clearScreen() {
-                this.screen.textContent = 'READY.';
-            }
-
-            /**
-             * Save the current program to a local file
-             */
-            saveProgramToFile() {
-                try {
-                    // Convert program to plain text format
-                    const lines = Object.keys(this.program)
-                        .sort((a, b) => parseInt(a) - parseInt(b))
-                        .map(key => `${key} ${this.program[key]}`);
-                    
-                    const content = lines.join('\n');
-                    const blob = new Blob([content], { type: 'text/plain' });
-                    const url = URL.createObjectURL(blob);
-                    
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = 'basic_program.bas';
-                    document.body.appendChild(a);
-                    a.click();
-                    
-                    // Clean up
-                    setTimeout(() => {
-                        document.body.removeChild(a);
-                        URL.revokeObjectURL(url);
-                    }, 100);
-                    
-                    this.printToScreen("PROGRAM SAVED TO FILE");
-                } catch (e) {
-                    this.printToScreen(`?SAVE ERROR: ${e.message}`);
-                }
-            }
-
-            /**
-             * Load a program from a local file
-             */
-            loadProgramFromFile() {
+            $('openBtn').addEventListener('click', () => {
                 const input = document.createElement('input');
                 input.type = 'file';
-                input.accept = '.bas';
-                
-                input.onchange = (event) => {
-                    const file = event.target.files[0];
-                    if (!file) return;
-                    
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                        try {
-                            // Parse the BASIC program lines
-                            const content = e.target.result;
-                            const lines = content.split('\n');
-                            
-                            // Clear current program
-                            this.program = {};
-                            
-                            // Parse each line
-                            for (const line of lines) {
-                                const trimmedLine = line.trim();
-                                if (trimmedLine) {
-                                    // Extract line number and command
-                                    const match = trimmedLine.match(/^(\d+)\s+(.*)/);
-                                    if (match) {
-                                        const lineNum = parseInt(match[1]);
-                                        const command = match[2];
-                                        this.program[lineNum] = command;
-                                    }
-                                }
-                            }
-                            
-                            this.printToScreen("PROGRAM LOADED FROM FILE");
-                            this.updateMemory();
-                        } catch (err) {
-                            this.printToScreen(`?LOAD ERROR: ${err.message}`);
-                        }
-                    };
-                    reader.readAsText(file);
-                };
-                
+                input.accept = '.bas,.txt,text/plain';
+                input.onchange = () => loadFile(input.files[0]);
                 input.click();
-            }
+            });
 
-            /**
-             * Load an example program
-             * @param {string} programName - Name of the example program
-             */
-            loadExampleProgram(programName) {
-                if (!programName || !this.exampleProgramsData[programName]) return;
-                
-                // Clear current program
-                this.program = {};
-                this.variables = {};
-                
-                // Load example program
-                const example = this.exampleProgramsData[programName];
-                for (const [lineNum, command] of Object.entries(example)) {
-                    this.program[lineNum] = command;
+            $('downloadBtn').addEventListener('click', () => {
+                const text = basic.listing();
+                if (!text) {
+                    term.ensureNewline();
+                    term.println('NOTHING TO DOWNLOAD');
+                    render();
+                    return;
                 }
-                
-                this.printToScreen(`LOADED EXAMPLE: ${programName.toUpperCase()}`);
-                this.updateMemory();
-                this.examplePrograms.selectedIndex = 0; // Reset dropdown
+                const url = URL.createObjectURL(new Blob([text + '\n'], { type: 'text/plain' }));
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'program.bas';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+            });
+
+            crt.addEventListener('dragover', e => { e.preventDefault(); crt.classList.add('drop'); });
+            crt.addEventListener('dragleave', () => crt.classList.remove('drop'));
+            crt.addEventListener('drop', e => {
+                e.preventDefault();
+                crt.classList.remove('drop');
+                loadFile(e.dataTransfer.files[0]);
+            });
+
+            // ---- keyword keyboard ----
+
+            const KEYS = ['PRINT', 'INPUT', 'LET', 'IF', 'THEN', 'ELSE', 'FOR', 'TO', 'STEP', 'NEXT',
+                'WHILE', 'WEND', 'GOTO', 'GOSUB', 'RETURN', 'DIM', 'REM', 'END'];
+            const COMMANDS = ['RUN', 'LIST', 'CLS', 'NEW', 'HELP', 'FILES'];
+            const keyboard = $('keyboard');
+            for (const k of KEYS) {
+                const b = document.createElement('button');
+                b.className = 'key';
+                b.textContent = k;
+                b.addEventListener('click', () => insertKeyword(k));
+                keyboard.appendChild(b);
+            }
+            for (const k of COMMANDS) {
+                const b = document.createElement('button');
+                b.className = 'key cmd';
+                b.textContent = k;
+                b.title = 'Run ' + k + ' now';
+                b.addEventListener('click', () => { execute(k); cmd.focus(); });
+                keyboard.appendChild(b);
             }
 
-            /**
-             * Update memory display
-             * Shows available memory based on program and variable storage size
-             */
-            updateMemory() {
-                const programSize = JSON.stringify(this.program).length;
-                const varSize = JSON.stringify(this.variables).length;
-                const total = programSize + varSize;
-                this.memory.textContent = `MEM: ${1000 - total}`;
+            function insertKeyword(word) {
+                const start = cmd.selectionStart, end = cmd.selectionEnd, value = cmd.value;
+                const before = value.slice(0, start);
+                const text = (before && !before.endsWith(' ') ? ' ' : '') + word + ' ';
+                cmd.value = before + text + value.slice(end);
+                const pos = start + text.length;
+                cmd.focus();
+                cmd.setSelectionRange(pos, pos);
             }
-        }
 
-        // Initialize interpreter when page loads
-        document.addEventListener('DOMContentLoaded', () => {
-            const interpreter = new BasicInterpreter();
-        });
+            // ---- phosphor ----
+
+            function setPhosphor(p) {
+                document.documentElement.dataset.phosphor = p;
+                document.querySelectorAll('.phosphor button').forEach(b => b.setAttribute('aria-pressed', b.dataset.p === p));
+                storage.set(PHOSPHOR_KEY, p);
+            }
+            document.querySelectorAll('.phosphor button').forEach(b => b.addEventListener('click', () => setPhosphor(b.dataset.p)));
+            setPhosphor(storage.get(PHOSPHOR_KEY) || 'green');
+
+            // ---- boot ----
+
+            term.println('  **** BASIC-40 INTERPRETER V2 ****');
+            term.println();
+            term.println(' TYPE HELP FOR COMMANDS, OR PICK AN');
+            term.println(' EXAMPLE AND TYPE RUN.');
+            term.println();
+            const saved = storage.get(AUTOSAVE_KEY);
+            if (saved) {
+                const n = basic.loadText(saved);
+                if (n) term.println(`RESTORED ${n} LINES FROM LAST SESSION`);
+            }
+            term.println('READY.');
+            render();
+            cmd.focus();
+        })();
     </script>
 </body>
 </html>
