@@ -19,6 +19,7 @@ Open `index.html` in a browser. No server or build step is needed.
 - `↑`/`↓` scroll through command history. Pasting a multi-line listing enters every line.
 - **OPEN** / **DOWNLOAD** read and write `.bas` files. You can also drop a `.bas` file on the screen.
 - The current program is saved automatically and restored on your next visit.
+- **SHARE** copies a link with the program packed into the address. Opening the link loads that program.
 
 ## Language
 

@@ -338,6 +338,7 @@
                     </select>
                     <button class="btn" id="openBtn" title="Open a .bas file">OPEN</button>
                     <button class="btn" id="downloadBtn" title="Download program as .bas">DOWNLOAD</button>
+                    <button class="btn" id="shareBtn" title="Copy a link that opens this program">SHARE</button>
                 </div>
 
                 <div class="status">
@@ -634,6 +635,70 @@
             document.querySelectorAll('.phosphor button').forEach(b => b.addEventListener('click', () => setPhosphor(b.dataset.p)));
             setPhosphor(storage.get(PHOSPHOR_KEY) || 'green');
 
+            // ---- share by link ----
+
+            /** Text -> URL-safe string, deflated when the browser supports it. */
+            async function packText(text) {
+                let bytes = new TextEncoder().encode(text);
+                let tag = 'b';
+                if (window.CompressionStream) {
+                    const stream = new Blob([bytes]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+                    bytes = new Uint8Array(await new Response(stream).arrayBuffer());
+                    tag = 'z';
+                }
+                let bin = '';
+                bytes.forEach(b => { bin += String.fromCharCode(b); });
+                return tag + btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+            }
+
+            async function unpackText(packed) {
+                const bin = atob(packed.slice(1).replace(/-/g, '+').replace(/_/g, '/'));
+                let bytes = Uint8Array.from(bin, c => c.charCodeAt(0));
+                if (packed[0] === 'z') {
+                    const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+                    bytes = new Uint8Array(await new Response(stream).arrayBuffer());
+                }
+                return new TextDecoder().decode(bytes);
+            }
+
+            $('shareBtn').addEventListener('click', async () => {
+                const text = basic.listing();
+                term.ensureNewline();
+                if (!text) {
+                    term.println('NOTHING TO SHARE');
+                    render();
+                    return;
+                }
+                const url = location.href.split('#')[0] + '#prog=' + await packText(text);
+                window.history.replaceState(null, '', url);
+                try {
+                    await navigator.clipboard.writeText(url);
+                    term.println('LINK COPIED TO CLIPBOARD');
+                } catch (e) {
+                    term.println('LINK IS IN THE ADDRESS BAR');
+                }
+                render();
+            });
+
+            async function loadSharedProgram() {
+                const m = /[#&]prog=([A-Za-z0-9_-]+)/.exec(location.hash);
+                if (!m) return false;
+                try {
+                    const n = basic.loadText(await unpackText(m[1]));
+                    term.println(`LOADED SHARED PROGRAM (${n} LINES)`);
+                    term.println('TYPE LIST OR RUN');
+                } catch (e) {
+                    term.println('?BAD SHARE LINK');
+                }
+                // Keep the link from overriding later edits on reload
+                window.history.replaceState(null, '', location.href.split('#')[0]);
+                return true;
+            }
+
+            window.addEventListener('hashchange', async () => {
+                if (await loadSharedProgram()) render();
+            });
+
             // ---- boot ----
 
             term.println('  **** BASIC-40 INTERPRETER V2 ****');
@@ -641,14 +706,18 @@
             term.println(' TYPE HELP FOR COMMANDS, OR PICK AN');
             term.println(' EXAMPLE AND TYPE RUN.');
             term.println();
-            const saved = storage.get(AUTOSAVE_KEY);
-            if (saved) {
-                const n = basic.loadText(saved);
-                if (n) term.println(`RESTORED ${n} LINES FROM LAST SESSION`);
-            }
-            term.println('READY.');
-            render();
-            cmd.focus();
+            (async () => {
+                if (!await loadSharedProgram()) {
+                    const saved = storage.get(AUTOSAVE_KEY);
+                    if (saved) {
+                        const n = basic.loadText(saved);
+                        if (n) term.println(`RESTORED ${n} LINES FROM LAST SESSION`);
+                    }
+                }
+                term.println('READY.');
+                render();
+                cmd.focus();
+            })();
         })();
     </script>
 </body>
