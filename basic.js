@@ -1053,6 +1053,36 @@
 20 FOR A = 0 TO 6.3 STEP 0.3
 30 PRINT TAB(19 + INT(SIN(A) * 18)); "*"
 40 NEXT A` },
+        fizzbuzz: { title: 'FizzBuzz', src: `
+10 REM FIZZBUZZ
+20 FOR I = 1 TO 30
+30 IF I MOD 15 = 0 THEN PRINT "FIZZBUZZ", : GOTO 70
+40 IF I MOD 3 = 0 THEN PRINT "FIZZ", : GOTO 70
+50 IF I MOD 5 = 0 THEN PRINT "BUZZ", : GOTO 70
+60 PRINT I,
+70 NEXT I
+80 PRINT` },
+        strings: { title: 'String Functions', src: `
+10 REM STRING FUNCTIONS
+20 INPUT "TYPE A WORD"; W$
+30 R$ = ""
+40 FOR I = LEN(W$) TO 1 STEP -1 : R$ = R$ + MID$(W$, I, 1) : NEXT I
+50 PRINT "REVERSED: "; R$
+60 PRINT "UPPER:    "; UCASE$(W$)
+70 PRINT "LENGTH:   "; LEN(W$)
+80 IF UCASE$(R$) = UCASE$(W$) THEN PRINT "IT'S A PALINDROME!" ELSE PRINT "NOT A PALINDROME."` },
+        sort: { title: 'Bubble Sort', src: `
+10 REM BUBBLE SORT USING READ/DATA
+20 DIM A(9)
+30 FOR I = 0 TO 9 : READ A(I) : NEXT I
+40 FOR I = 0 TO 8
+50 FOR J = 0 TO 8 - I
+60 IF A(J) > A(J + 1) THEN T = A(J) : A(J) = A(J + 1) : A(J + 1) = T
+70 NEXT J
+80 NEXT I
+90 FOR I = 0 TO 9 : PRINT A(I); " "; : NEXT I
+100 PRINT
+110 DATA 42, 7, 19, 88, 3, 56, 71, 25, 64, 10` },
         mandelbrot: { title: 'Mandelbrot Fractal', src: `
 10 REM MANDELBROT SET
 20 CLS
