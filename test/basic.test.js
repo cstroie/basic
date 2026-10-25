@@ -116,7 +116,10 @@ test('primes.bas (WHILE/END WHILE, EXIT, [] arrays, ==)', () => {
 test('every built-in example runs without error', () => {
     const inputs = { primes: ['5'], factorial: ['5', '0'], strings: ['level'], guess: Array.from({ length: 100 }, (_, i) => String(i + 1)) };
     for (const [id, ex] of Object.entries(EXAMPLES)) {
-        const out = program(ex.src, [...(inputs[id] || [])]);
+        const b = new Basic(recordingTerminal(), memoryStorage());
+        b.keys = ['a', 's', 'x', 'q'];
+        b.loadText(ex.src);
+        const out = run(['RUN'], [...(inputs[id] || [])], b);
         assert.ok(out.endsWith('READY.'), `${id} did not finish`);
         assert.ok(!out.includes('ERROR'), `${id} failed:\n${out}`);
     }
@@ -128,4 +131,90 @@ test('example files in examples/ run without error', () => {
         const out = program(fs.readFileSync(path.join(dir, f), 'utf8'), Array.from({ length: 100 }, (_, i) => String(i + 1)));
         assert.ok(!out.includes('ERROR'), `${f} failed:\n${out}`);
     }
+});
+
+test('DEF FN with one and several parameters', () => {
+    assert.equal(run(['DEF FNSQ(X) = X * X : X = 5 : PRINT FNSQ(3); X']), '95\nOK');
+    assert.equal(run(['DEF FNH(A, B) = SQR(A * A + B * B) : PRINT FNH(3, 4)']), '5\nOK');
+    assert.equal(run(['DEF FNG$(N$) = "HI " + N$ : PRINT FNG$("BOB")']), 'HI BOB\nOK');
+    assert.equal(run(['DEF FNA = 42 : PRINT FNA']), '42\nOK');
+});
+
+test('INKEY$ is non-blocking; GET waits for a key', () => {
+    const b = new Basic(recordingTerminal(), memoryStorage());
+    assert.equal(run(['PRINT "[" + INKEY$ + "]"'], [], b), '[]\nOK');
+    b.keys.push('Z');
+    assert.equal(run(['PRINT INKEY$'], [], b), 'Z\nOK');
+    b.enter('GET K$ : PRINT "GOT "; K$');
+    assert.equal(b.runSlice(), 'key');
+    b.provideKey('m');
+    while (b.runSlice() === 'running');
+    assert.match(b.term.log, /GOT m/);
+    b.keys.push('A');
+    assert.equal(run(['GET K : PRINT K'], [], b), '65\nOK');
+});
+
+test('SLEEP pauses without blocking', () => {
+    const b = new Basic(recordingTerminal(), memoryStorage());
+    b.enter('SLEEP 0.02 : PRINT "AWAKE"');
+    assert.equal(b.runSlice(), 'sleep');
+    const until = Date.now() + 30;
+    while (Date.now() < until);
+    while (b.runSlice() === 'running');
+    assert.match(b.term.log, /AWAKE/);
+});
+
+test('RENUM rewrites line references', () => {
+    const b = new Basic(recordingTerminal(), memoryStorage());
+    b.loadText('5 GOSUB 7\n7 IF A THEN 9 ELSE 5\n9 ON X GOTO 5, 7, 9 : PRINT "GOTO 5" : REM GOTO 7\n11 RESTORE 9');
+    run(['RENUM 100, 10'], [], b);
+    assert.equal(b.listing(), [
+        '100 GOSUB 110',
+        '110 IF A THEN 120 ELSE 100',
+        '120 ON X GOTO 100, 110, 120 : PRINT "GOTO 5" : REM GOTO 7',
+        '130 RESTORE 120'
+    ].join('\n'));
+});
+
+test('AUTO numbers lines until an empty line', () => {
+    const b = new Basic(recordingTerminal(), memoryStorage());
+    run(['AUTO 100, 5'], [], b);
+    assert.deepEqual(b.auto, { next: 100, step: 5 });
+    b.enter('100 PRINT 1');
+    assert.equal(b.auto.next, 105);
+    b.enter('');
+    assert.equal(b.auto, null);
+});
+
+test('EDIT puts a line back in the input box', () => {
+    const b = new Basic(recordingTerminal(), memoryStorage());
+    run(['10 PRINT "HI"', 'EDIT 10'], [], b);
+    assert.equal(b.prefill, '10 PRINT "HI"');
+});
+
+test('COLOR records per-cell colours', () => {
+    const b = new Basic(recordingTerminal(), memoryStorage());
+    run(['COLOR 2, 6 : PRINT "RED"; : COLOR -1, -1 : PRINT "X"'], [], b);
+    const line = b.term.runs().find(r => r.some(([t]) => t.includes('RED')));
+    assert.deepEqual(line[0], ['RED', 2, 6]);
+    assert.deepEqual(line[1], ['X', -1, -1]);
+    assert.match(run(['COLOR 99'], [], b), /ILLEGAL QUANTITY/);
+});
+
+test('graphics and sound call the UI hooks', () => {
+    const b = new Basic(recordingTerminal(), memoryStorage());
+    const calls = [];
+    b.gfx = {
+        clear: () => calls.push('clear'),
+        plot: (x, y, c) => calls.push(`plot ${x},${y},${c}`),
+        line: (a, b2, c, d, col) => calls.push(`line ${a},${b2}-${c},${d},${col}`),
+        circle: (x, y, r, c) => calls.push(`circle ${x},${y},${r},${c}`)
+    };
+    b.audio = { tone: (f, ms) => calls.push(`tone ${f},${ms}`) };
+    run(['COLOR 5 : PLOT 10, 20 : DRAW 30, 40 : CIRCLE 50, 60, 7 : GCLS : SOUND 440, 100 : BEEP'], [], b);
+    assert.deepEqual(calls, ['plot 10,20,5', 'line 10,20-30,40,5', 'circle 50,60,7,5', 'clear', 'tone 440,100', 'tone 880,150']);
+});
+
+test('OPTION CLASSIC pads numbers like MS BASIC', () => {
+    assert.equal(run(['OPTION CLASSIC : PRINT 1; -2; "X"']), '1 -2 X\nOK');
 });

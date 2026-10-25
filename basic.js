@@ -12,7 +12,8 @@
         'FOR', 'TO', 'STEP', 'NEXT', 'REM', 'END', 'STOP', 'DIM', 'WHILE', 'WEND',
         'EXIT', 'DATA', 'READ', 'RESTORE', 'CLS', 'AT', 'AND', 'OR', 'NOT', 'MOD',
         'ON', 'RANDOMIZE', 'RUN', 'LIST', 'NEW', 'SAVE', 'LOAD', 'FILES', 'KILL',
-        'CONT', 'CLEAR', 'HELP'
+        'CONT', 'CLEAR', 'HELP', 'DEF', 'GET', 'SLEEP', 'RENUM', 'AUTO', 'EDIT',
+        'COLOR', 'PLOT', 'DRAW', 'CIRCLE', 'GCLS', 'SOUND', 'BEEP', 'OPTION'
     ]);
 
     const STORAGE_PREFIX = 'basic_program_';
@@ -153,6 +154,22 @@
         return s.length >= 2 && s[0] === '"' && s[s.length - 1] === '"' ? s.slice(1, -1) : s;
     }
 
+    /**
+     * Rewrite line-number references (GOTO, GOSUB, THEN, ELSE, RESTORE,
+     * RUN, ON..GOTO lists) outside string literals and comments.
+     */
+    function renumberRefs(text, fix) {
+        const rem = /(^|[^A-Z0-9_$])REM/.exec(text.replace(/"[^"]*"?/g, m => ' '.repeat(m.length)));
+        const code = rem ? text.slice(0, rem.index + rem[1].length) : text;
+        const tail = rem ? text.slice(code.length) : '';
+        const parts = code.split(/("[^"]*"?)/);
+        for (let i = 0; i < parts.length; i += 2) {
+            parts[i] = parts[i].replace(/\b(GOTO|GOSUB|THEN|ELSE|RESTORE|RUN)(\s*)(\d+(?:\s*,\s*\d+)*)/g,
+                (m, kw, sp, list) => kw + sp + list.replace(/\d+/g, fix));
+        }
+        return parts.join('') + tail;
+    }
+
     class Cursor {
         constructor(toks) { this.t = toks; this.i = 0; }
         peek(k = 0) { return this.t[this.i + k] || EOF; }
@@ -165,29 +182,39 @@
     }
 
     /**
-     * Character-grid screen with scrollback.
+     * Character-grid screen with scrollback. Each cell also has a colour
+     * attribute: (fg + 1) * 32 + (bg + 1), where -1 means the theme default.
      */
     class Terminal {
         constructor(cols = 40, rows = 24, maxHistory = 1000) {
             this.cols = cols;
             this.rows = rows;
             this.maxHistory = maxHistory;
+            this.fg = -1;
+            this.bg = -1;
             this.cls();
         }
 
         blankRow() { return new Array(this.cols).fill(' '); }
+        blankAttrs() { return new Array(this.cols).fill(this.attr()); }
+        attr() { return (this.fg + 1) * 32 + (this.bg + 1); }
 
         cls() {
             this.grid = Array.from({ length: this.rows }, () => this.blankRow());
+            this.attrs = Array.from({ length: this.rows }, () => this.blankAttrs());
             this.history = [];
+            this.historyAttrs = [];
             this.row = 0;
             this.col = 0;
         }
 
         scroll() {
             this.history.push(this.grid.shift().join('').trimEnd());
-            if (this.history.length > this.maxHistory) this.history.shift();
+            const a = this.attrs.shift();
+            this.historyAttrs.push(a.every(v => v === 0) ? null : a);
+            if (this.history.length > this.maxHistory) { this.history.shift(); this.historyAttrs.shift(); }
             this.grid.push(this.blankRow());
+            this.attrs.push(this.blankAttrs());
         }
 
         newline() {
@@ -202,6 +229,7 @@
             for (const ch of String(text)) {
                 if (ch === '\n') { this.newline(); continue; }
                 if (this.col >= this.cols) this.newline();
+                this.attrs[this.row][this.col] = this.attr();
                 this.grid[this.row][this.col++] = ch;
             }
         }
@@ -229,6 +257,34 @@
         lines() {
             return this.history.concat(this.grid.map(r => r.join('').trimEnd()));
         }
+
+        /**
+         * Lines as runs of [text, fg, bg] for coloured rendering.
+         * Uncoloured lines are a single run.
+         */
+        runs() {
+            const out = [];
+            const split = (text, attrs) => {
+                if (!attrs) return [[text, -1, -1]];
+                const runs = [];
+                let start = 0;
+                const width = Math.max(text.length, attrs.findLastIndex(v => v % 32 !== 0) + 1);
+                const padded = text.padEnd(width);
+                for (let i = 1; i <= width; i++) {
+                    if (i === width || attrs[i] !== attrs[start]) {
+                        runs.push([padded.slice(start, i), Math.floor(attrs[start] / 32) - 1, (attrs[start] % 32) - 1]);
+                        start = i;
+                    }
+                }
+                return runs;
+            };
+            this.history.forEach((t, i) => out.push(split(t, this.historyAttrs[i])));
+            this.grid.forEach((row, i) => {
+                const a = this.attrs[i];
+                out.push(split(row.join('').trimEnd(), a.every(v => v === 0) ? null : a));
+            });
+            return out;
+        }
     }
 
     class Basic {
@@ -244,12 +300,20 @@
             this.state = 'idle';
             this.onProgramChange = null;
             this.cont = null;
+            this.keys = [];           // keystrokes for INKEY$ / GET
+            this.gfx = null;          // { clear, plot, line, circle } supplied by the UI
+            this.audio = null;        // { tone(freq, ms) } supplied by the UI
+            this.auto = null;         // { next, step } while AUTO numbering is on
+            this.prefill = null;      // text the UI should put in the input box
+            this.classicNumbers = false;
             this.clearVars();
         }
 
         clearVars() {
             this.vars = {};
             this.arrays = {};
+            this.fns = {};
+            this.pen = { x: 0, y: 0 };
             this.loops = [];
             this.gosubs = [];
             this.dataPtr = 0;
@@ -338,14 +402,22 @@
         enter(text) {
             if (this.state !== 'idle') return;
             const src = text.trim();
-            if (!src) return;
+            if (!src) {
+                this.auto = null;
+                return;
+            }
             const m = /^(\d+)\s*(.*)$/.exec(src);
             if (m) {
                 const body = normalize(m[2].trim());
                 if (body) this.program[+m[1]] = body; else delete this.program[+m[1]];
+                if (this.auto) {
+                    if (body) this.auto.next = +m[1] + this.auto.step;
+                    else this.auto = null;
+                }
                 this.changed();
                 return;
             }
+            this.auto = null;
             this.quiet = false;
             this.ranProgram = false;
             this.stmt = null;
@@ -356,6 +428,10 @@
 
         /** Execute statements for up to `ms` milliseconds. Returns the new state. */
         runSlice(ms = 15) {
+            if (this.state === 'sleep') {
+                if (Date.now() < this.wakeAt) return 'sleep';
+                this.state = 'running';
+            }
             const t0 = Date.now();
             let count = 0;
             try {
@@ -397,12 +473,28 @@
             const ln = this.stmt ? this.stmt.line : null;
             const inProgram = this.prog && this.cur === this.prog.stmts;
             // An interrupted INPUT is re-executed on CONT
-            this.cont = inProgram ? { pc: this.state === 'input' ? this.pc - 1 : this.pc } : null;
+            this.cont = inProgram ? { pc: this.state === 'input' || this.state === 'key' ? this.pc - 1 : this.pc } : null;
             this.state = 'idle';
             this.pending = null;
             this.term.ensureNewline();
             this.term.println(`BREAK${ln !== null ? ' IN ' + ln : ''}`);
             this.term.println('READY.');
+        }
+
+        /** Deliver a keystroke for INKEY$ / GET. */
+        provideKey(ch) {
+            if (this.state === 'key') {
+                try {
+                    this.assign(this.pending.lv, this.pending.lv.name.endsWith('$') ? ch : ch.charCodeAt(0));
+                } catch (e) {
+                    this.fail(e.message);
+                    return;
+                }
+                this.pending = null;
+                this.state = 'running';
+            } else if (this.keys.length < 64) {
+                this.keys.push(ch);
+            }
         }
 
         provideInput(text) {
@@ -576,6 +668,8 @@
                 return v;
             }
             if (tk.t !== 'id') err('SYNTAX');
+            if (tk.v === 'INKEY$') return this.keys.length ? this.keys.shift() : '';
+            if (this.fns[tk.v]) return this.callFn(tk.v, p);
             const fn = FUNCS[tk.v];
             if (fn) {
                 const args = [];
@@ -594,6 +688,36 @@
             }
             const v = this.vars[tk.v];
             return v !== undefined ? v : (tk.v.endsWith('$') ? '' : 0);
+        }
+
+        /** Call a DEF FN function: bind parameters, evaluate, restore. */
+        callFn(name, p) {
+            const def = this.fns[name];
+            const args = [];
+            if (def.params.length) {
+                p.expect('op', '(');
+                do args.push(this.expr(p)); while (p.accept('op', ','));
+                p.expect('op', ')');
+            }
+            if (args.length !== def.params.length) err('SYNTAX');
+            if ((this.fnDepth = (this.fnDepth || 0) + 1) > 100) { this.fnDepth = 0; err('OUT OF MEMORY'); }
+            const saved = def.params.map(n => this.vars[n]);
+            try {
+                def.params.forEach((n, i) => {
+                    if (n.endsWith('$') !== (typeof args[i] === 'string')) err('TYPE MISMATCH');
+                    this.vars[n] = args[i];
+                });
+                const body = new Cursor(def.body);
+                const v = this.expr(body);
+                body.end();
+                if (name.endsWith('$') !== (typeof v === 'string')) err('TYPE MISMATCH');
+                return v;
+            } finally {
+                def.params.forEach((n, i) => {
+                    if (saved[i] === undefined) delete this.vars[n]; else this.vars[n] = saved[i];
+                });
+                this.fnDepth--;
+            }
         }
 
         indices(p) {
@@ -682,7 +806,9 @@
                     continue;
                 }
                 const v = this.expr(p);
-                this.term.write(typeof v === 'number' ? fmt(v) : v);
+                if (typeof v !== 'number') this.term.write(v);
+                else if (this.classicNumbers) this.term.write((v < 0 ? '' : ' ') + fmt(v) + ' ');
+                else this.term.write(fmt(v));
             }
             if (newline) this.term.newline();
         }
@@ -887,6 +1013,7 @@
         s_CLS(p) {
             p.end();
             this.term.cls();
+            if (this.gfx) this.gfx.clear();
             if (this.cur !== (this.prog && this.prog.stmts)) this.quiet = true;
         }
 
@@ -986,6 +1113,148 @@
             for (const n of names) this.term.println(n);
         }
 
+        s_DEF(p) {
+            const tk = p.next();
+            if (tk.t !== 'id' || !/^FN/.test(tk.v)) err('SYNTAX');
+            const params = [];
+            if (p.accept('op', '(')) {
+                do {
+                    const prm = p.next();
+                    if (prm.t !== 'id') err('SYNTAX');
+                    params.push(prm.v);
+                } while (p.accept('op', ','));
+                p.expect('op', ')');
+            }
+            p.expect('op', '=');
+            const body = p.t.slice(p.i);
+            if (!body.length) err('SYNTAX');
+            this.fns[tk.v] = { params, body };
+        }
+
+        s_GET(p) {
+            const lv = this.lvalue(p);
+            p.end();
+            if (this.keys.length) {
+                const ch = this.keys.shift();
+                this.assign(lv, lv.name.endsWith('$') ? ch : ch.charCodeAt(0));
+                return;
+            }
+            this.pending = { lv };
+            this.state = 'key';
+        }
+
+        s_SLEEP(p) {
+            const secs = N(this.expr(p));
+            p.end();
+            if (secs > 0) {
+                this.wakeAt = Date.now() + secs * 1000;
+                this.state = 'sleep';
+            }
+        }
+
+        s_COLOR(p) {
+            const fg = Math.floor(N(this.expr(p)));
+            const bg = p.accept('op', ',') ? Math.floor(N(this.expr(p))) : this.term.bg;
+            p.end();
+            if (fg < -1 || fg > 15 || bg < -1 || bg > 15) err('ILLEGAL QUANTITY');
+            this.term.fg = fg;
+            this.term.bg = bg;
+        }
+
+        /** Graphics coordinates: x 0-319, y 0-239, colour from COLOR. */
+        point(p) {
+            const x = Math.round(N(this.expr(p)));
+            p.expect('op', ',');
+            const y = Math.round(N(this.expr(p)));
+            return { x, y };
+        }
+
+        gcolor() { return this.term.fg; }
+
+        s_PLOT(p) {
+            const pt = this.point(p);
+            p.end();
+            if (this.gfx) this.gfx.plot(pt.x, pt.y, this.gcolor());
+            this.pen = pt;
+        }
+
+        s_DRAW(p) {
+            const pt = this.point(p);
+            p.end();
+            if (this.gfx) this.gfx.line(this.pen.x, this.pen.y, pt.x, pt.y, this.gcolor());
+            this.pen = pt;
+        }
+
+        s_CIRCLE(p) {
+            const c = this.point(p);
+            p.expect('op', ',');
+            const r = N(this.expr(p));
+            p.end();
+            if (r < 0) err('ILLEGAL QUANTITY');
+            if (this.gfx) this.gfx.circle(c.x, c.y, r, this.gcolor());
+        }
+
+        s_GCLS(p) {
+            p.end();
+            if (this.gfx) this.gfx.clear();
+        }
+
+        s_SOUND(p) {
+            const freq = N(this.expr(p));
+            p.expect('op', ',');
+            const ms = N(this.expr(p));
+            p.end();
+            if (freq < 20 || freq > 20000 || ms < 0 || ms > 10000) err('ILLEGAL QUANTITY');
+            if (this.audio) this.audio.tone(freq, ms);
+        }
+
+        s_BEEP(p) {
+            p.end();
+            if (this.audio) this.audio.tone(880, 150);
+        }
+
+        s_OPTION(p) {
+            const tk = p.next();
+            p.end();
+            if (tk.v === 'CLASSIC') this.classicNumbers = true;
+            else if (tk.v === 'COMPACT') this.classicNumbers = false;
+            else err('SYNTAX');
+        }
+
+        s_AUTO(p) {
+            const start = p.is('num') ? p.next().v : 10;
+            const step = p.accept('op', ',') ? this.lineArg(p) : 10;
+            p.end();
+            if (step <= 0) err('ILLEGAL QUANTITY');
+            this.auto = { next: start, step };
+            this.quiet = true;
+        }
+
+        s_EDIT(p) {
+            const n = this.lineArg(p);
+            p.end();
+            if (this.program[n] === undefined) err("UNDEF'D STATEMENT");
+            this.prefill = `${n} ${this.program[n]}`;
+            this.quiet = true;
+        }
+
+        /** RENUM [start[,step]]: renumber lines and every line reference. */
+        s_RENUM(p) {
+            const start = p.is('num') ? p.next().v : 10;
+            const step = p.accept('op', ',') ? this.lineArg(p) : 10;
+            p.end();
+            if (start < 0 || step <= 0) err('ILLEGAL QUANTITY');
+            const old = this.lineNumbers();
+            const map = new Map(old.map((n, i) => [n, start + i * step]));
+            const fix = n => (map.has(+n) ? String(map.get(+n)) : n);
+            const program = {};
+            for (const n of old) program[map.get(n)] = renumberRefs(this.program[n], fix);
+            this.program = program;
+            this.changed();
+            this.term.ensureNewline();
+            this.term.println(`RENUMBERED ${old.length} LINES`);
+        }
+
         s_HELP(p) {
             p.end();
             this.term.ensureNewline();
@@ -1002,7 +1271,12 @@
                 '  STR$ LEFT$ RIGHT$ MID$ INSTR UCASE$',
                 '  LCASE$ STRING$  PRINT: TAB() SPC()',
                 'OPERATORS: + - * / ^ MOD = <> < > <= >=',
-                '  AND OR NOT     ESC BREAKS A PROGRAM'
+                '  AND OR NOT',
+                'MORE: DEF FN  INKEY$  GET  SLEEP secs',
+                '  COLOR f[,b]  PLOT/DRAW x,y  GCLS',
+                '  CIRCLE x,y,r  SOUND hz,ms  BEEP',
+                '  RENUM  AUTO  EDIT n  OPTION CLASSIC',
+                'ESC BREAKS A RUNNING PROGRAM'
             ].forEach(l => this.term.println(l));
         }
     }
@@ -1083,6 +1357,31 @@
 90 FOR I = 0 TO 9 : PRINT A(I); " "; : NEXT I
 100 PRINT
 110 DATA 42, 7, 19, 88, 3, 56, 71, 25, 64, 10` },
+        graphics: { title: 'Graphics & Colour', src: `
+10 REM PLOT, DRAW, CIRCLE AND COLOR
+20 CLS
+30 FOR I = 0 TO 15
+40 COLOR I : CIRCLE 160, 120, 10 + I * 6
+50 NEXT I
+60 COLOR 7 : PLOT 310, 120
+70 FOR A = 0 TO 6.3 STEP 0.1
+80 DRAW 160 + 150 * COS(A), 120 + 110 * SIN(A * 2)
+90 NEXT A
+100 COLOR 1, 6 : PRINT AT 0, 12; " GRAPHICS! "
+110 COLOR -1, -1 : PRINT AT 23, 0;` },
+        keys: { title: 'Keyboard & Sound', src: `
+10 REM PLAY NOTES WITH GET, SOUND AND DEF FN
+20 DEF FNHZ(S) = 261.63 * 2 ^ (S / 12)
+30 DIM T(8) : FOR I = 1 TO 8 : READ T(I) : NEXT I
+40 DATA 0, 2, 4, 5, 7, 9, 11, 12
+50 K$ = "ASDFGHJK" : N$ = "CDEFGABC"
+60 PRINT "PLAY ON KEYS A S D F G H J K"
+65 PRINT "PRESS Q TO QUIT"
+70 GET C$ : C$ = UCASE$(C$)
+80 IF C$ = "Q" THEN PRINT : PRINT "BYE!" : END
+90 I = INSTR(K$, C$) : IF I = 0 THEN 70
+100 PRINT MID$(N$, I, 1); " "; : SOUND FNHZ(T(I)), 250
+110 GOTO 70` },
         mandelbrot: { title: 'Mandelbrot Fractal', src: `
 10 REM MANDELBROT SET
 20 CLS

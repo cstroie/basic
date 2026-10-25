@@ -29,6 +29,12 @@ Open `index.html` in a browser. No server or build step is needed.
 | Statements | `PRINT` (`;` `,` `TAB()` `SPC()`, `PRINT AT row,col;`), `INPUT ["prompt";] a, b$`, `LET` (optional), `IF … THEN … ELSE`, `FOR … TO … STEP` / `NEXT`, `WHILE` / `WEND` (or `END WHILE`), `EXIT [FOR\|WHILE]`, `GOTO`, `GOSUB` / `RETURN`, `ON x GOTO/GOSUB`, `DIM`, `READ` / `DATA` / `RESTORE`, `END`, `STOP`, `REM` / `'`, `?` (short for `PRINT`) |
 | Functions | `ABS SGN INT SQR SIN COS TAN ATN LOG EXP RND PI LEN VAL ASC CHR$ STR$ LEFT$ RIGHT$ MID$ INSTR UCASE$ LCASE$ STRING$` |
 | Operators | `+ - * / ^ MOD`, `= == <> < > <= >=`, `AND OR NOT`, `+` joins strings |
+| User functions | `DEF FNA(X) = …`, `DEF FNB$(A$, N) = …` |
+| Keyboard and time | `INKEY$` (non-blocking), `GET k$` (waits for a key), `SLEEP seconds` |
+| Colour and graphics | `COLOR fg[,bg]` (0–15, C64 palette; −1 is the default), `PLOT x,y`, `DRAW x,y`, `CIRCLE x,y,r`, `GCLS` on a 320×240 canvas over the text |
+| Sound | `SOUND hz,ms`, `BEEP` |
+| Editing | `RENUM [start[,step]]`, `AUTO [start[,step]]` (an empty line ends it), `EDIT line` |
+| Options | `OPTION CLASSIC` prints numbers with MS BASIC spacing; `OPTION COMPACT` (default) doesn't |
 
 - Separate statements on one line with `:`.
 - Variables whose names end in `$` hold strings. Arrays can be indexed with `A(i)` or `A[i]`, and an array used without `DIM` gets 0..10.
@@ -36,7 +42,7 @@ Open `index.html` in a browser. No server or build step is needed.
 
 ## Examples
 
-The menu on the page has nine built-in programs. The same programs, plus the original `primes.bas`, are in [`examples/`](examples/) as plain `.bas` files. Load one with **OPEN** or by dropping it on the screen.
+The menu on the page has eleven built-in programs, including Graphics & Colour and Keyboard & Sound. The same programs, plus the original `primes.bas`, are in [`examples/`](examples/) as plain `.bas` files. Load one with **OPEN** or by dropping it on the screen.
 
 | File | Shows |
 |------|-------|
@@ -49,6 +55,8 @@ The menu on the page has nine built-in programs. The same programs, plus the ori
 | `fizzbuzz.bas` | `MOD`, print zones with `,` |
 | `strings.bas` | `MID$`, `UCASE$`, `LEN`, `IF … ELSE` |
 | `sort.bas` | `DIM`, `READ` / `DATA`, nested loops |
+| `graphics.bas` | `COLOR`, `PLOT`, `DRAW`, `CIRCLE` |
+| `keys.bas` | `GET`, `SOUND`, `DEF FN`, `INSTR` |
 | `mandelbrot.bas` | `PRINT AT`, `WHILE`, `AND`, `MID$` |
 
 ## Install and offline use

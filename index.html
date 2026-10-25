@@ -130,6 +130,19 @@
         .crt.drop { outline: 3px dashed var(--fg); outline-offset: -8px; }
 
         .grid-box { container-type: inline-size; }
+        .screen-wrap { position: relative; }
+
+        /* Graphics layer covers the 40x24 text area (not the scrollback) */
+        #gfx {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: calc(100cqw * 40 / 40.5);
+            height: calc(24 * 1.3 * 100cqw / 40.5);
+            image-rendering: pixelated;
+            pointer-events: none;
+            filter: drop-shadow(0 0 2px var(--glow));
+        }
 
         #screen, .inputline {
             font-family: var(--pixel);
@@ -317,7 +330,10 @@
                 <div class="bezel">
                     <div class="crt" id="crt">
                         <div class="grid-box">
-                            <pre id="screen" aria-live="polite"></pre>
+                            <div class="screen-wrap">
+                                <pre id="screen" aria-live="polite"></pre>
+                                <canvas id="gfx" width="320" height="240" aria-hidden="true"></canvas>
+                            </div>
                             <div class="inputline">
                                 <span id="prompt">&gt;</span>
                                 <input id="cmd" type="text" autocomplete="off" autocorrect="off" autocapitalize="off"
@@ -371,6 +387,10 @@
                         <code>ABS SGN INT SQR SIN COS TAN ATN LOG EXP RND PI LEN VAL ASC CHR$ STR$ LEFT$ RIGHT$ MID$ INSTR UCASE$ LCASE$ STRING$ TAB SPC</code>
                         <h3>OPERATORS</h3>
                         <code>+ - * / ^ MOD  = &lt;&gt; &lt; &gt; &lt;= &gt;=  AND OR NOT</code>
+                        <h3>GRAPHICS &amp; SOUND</h3>
+                        <code>COLOR fg[,bg] (0-15, -1 default)  PLOT x,y  DRAW x,y  CIRCLE x,y,r  GCLS  SOUND hz,ms  BEEP</code> on a 320×240 canvas.
+                        <h3>MORE</h3>
+                        <code>DEF FNA(X)=…  INKEY$  GET k$  SLEEP secs  RENUM [start,step]  AUTO [start,step]  EDIT n  OPTION CLASSIC|COMPACT</code>
                     </div>
                 </details>
                 <details>
@@ -418,22 +438,119 @@
                 renderQueued = true;
                 requestAnimationFrame(() => {
                     renderQueued = false;
-                    screen.textContent = term.lines().join('\n');
+                    renderScreen();
                     screen.scrollTop = screen.scrollHeight;
                     updateStatus();
                 });
             }
 
+            // C64-style palette for COLOR 0-15
+            const PALETTE = ['#000000', '#ffffff', '#c3524a', '#84c5cc', '#a057a3', '#6eb84a', '#4b3fb0', '#d5df7c',
+                '#a16e3a', '#6b5300', '#e88b85', '#505050', '#808080', '#b2f2a0', '#8b7ff0', '#c8c8c8'];
+
+            function renderScreen() {
+                const runs = term.runs();
+                // Fast path: no colour anywhere
+                if (runs.every(line => line.length === 1 && line[0][1] < 0 && line[0][2] < 0)) {
+                    screen.textContent = runs.map(line => line[0][0]).join('\n');
+                    return;
+                }
+                const frag = document.createDocumentFragment();
+                runs.forEach((line, i) => {
+                    if (i) frag.appendChild(document.createTextNode('\n'));
+                    for (const [text, fg, bg] of line) {
+                        if (fg < 0 && bg < 0) { frag.appendChild(document.createTextNode(text)); continue; }
+                        const span = document.createElement('span');
+                        span.textContent = text;
+                        if (fg >= 0) span.style.color = PALETTE[fg];
+                        if (bg >= 0) span.style.background = PALETTE[bg];
+                        frag.appendChild(span);
+                    }
+                });
+                screen.textContent = '';
+                screen.appendChild(frag);
+            }
+
+            // ---- graphics: 320x240 canvas over the text grid ----
+
+            const canvas = $('gfx');
+            const g = canvas.getContext('2d');
+            const GW = 320, GH = 240;
+
+            function inkColor(c) {
+                return c >= 0 ? PALETTE[c] : getComputedStyle(document.documentElement).getPropertyValue('--fg').trim();
+            }
+
+            function setPixel(x, y) {
+                if (x >= 0 && y >= 0 && x < GW && y < GH) g.fillRect(x, y, 1, 1);
+            }
+
+            basic.gfx = {
+                clear() { g.clearRect(0, 0, GW, GH); },
+                plot(x, y, c) { g.fillStyle = inkColor(c); setPixel(x, y); },
+                line(x0, y0, x1, y1, c) {
+                    // Bresenham for crisp, pixel-exact lines
+                    g.fillStyle = inkColor(c);
+                    const dx = Math.abs(x1 - x0), dy = -Math.abs(y1 - y0);
+                    const sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
+                    let e = dx + dy;
+                    for (let n = 0; n < 4000; n++) {
+                        setPixel(x0, y0);
+                        if (x0 === x1 && y0 === y1) break;
+                        const e2 = 2 * e;
+                        if (e2 >= dy) { e += dy; x0 += sx; }
+                        if (e2 <= dx) { e += dx; y0 += sy; }
+                    }
+                },
+                circle(cx, cy, r, c) {
+                    g.fillStyle = inkColor(c);
+                    let x = Math.round(r), y = 0, e = 1 - x;
+                    while (x >= y) {
+                        for (const [px, py] of [[x, y], [y, x], [-y, x], [-x, y], [-x, -y], [-y, -x], [y, -x], [x, -y]]) setPixel(cx + px, cy + py);
+                        y++;
+                        if (e < 0) e += 2 * y + 1; else { x--; e += 2 * (y - x) + 1; }
+                    }
+                }
+            };
+
+            // ---- sound: square-wave tones queued back to back ----
+
+            let audioCtx = null;
+            let audioEnd = 0;
+            basic.audio = {
+                tone(freq, ms) {
+                    try {
+                        audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+                        const start = Math.max(audioCtx.currentTime, audioEnd);
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.type = 'square';
+                        osc.frequency.value = freq;
+                        gain.gain.setValueAtTime(0.08, start);
+                        gain.gain.setValueAtTime(0, start + ms / 1000);
+                        osc.connect(gain).connect(audioCtx.destination);
+                        osc.start(start);
+                        osc.stop(start + ms / 1000 + 0.02);
+                        audioEnd = start + ms / 1000;
+                    } catch (e) { /* no audio available */ }
+                }
+            };
+
             function updateStatus() {
-                const labels = { idle: 'READY', running: 'RUNNING', input: 'INPUT' };
+                const labels = { idle: basic.auto ? 'AUTO' : 'READY', running: 'RUNNING', input: 'INPUT', key: 'GET', sleep: 'SLEEP' };
                 $('state').textContent = labels[basic.state];
                 $('lines').textContent = Object.keys(basic.program).length;
                 $('bytes').textContent = basic.listing().length;
                 $('stopBtn').disabled = basic.state === 'idle';
                 $('led').className = 'led ' + (basic.state === 'idle' ? 'on' : basic.state === 'input' ? 'wait' : 'on');
-                crt.classList.toggle('busy', basic.state === 'running');
+                crt.classList.toggle('busy', basic.state === 'running' || basic.state === 'sleep');
                 $('prompt').textContent = basic.state === 'input' ? '?' : '>';
-                cmd.placeholder = basic.state === 'input' ? 'ENTER VALUE' : basic.state === 'running' ? 'RUNNING… ESC TO BREAK' : 'TYPE HERE';
+                cmd.placeholder = {
+                    input: 'ENTER VALUE',
+                    running: 'RUNNING… ESC TO BREAK',
+                    sleep: 'RUNNING… ESC TO BREAK',
+                    key: 'PRESS A KEY'
+                }[basic.state] || (basic.auto ? 'EMPTY LINE ENDS AUTO' : 'TYPE HERE');
             }
 
             // ---- execution loop ----
@@ -446,9 +563,27 @@
                     const state = basic.runSlice(15);
                     render();
                     if (state === 'running') setTimeout(step, 0);
-                    else pumping = false;
+                    else if (state === 'sleep') setTimeout(step, Math.max(0, basic.wakeAt - Date.now()));
+                    else {
+                        pumping = false;
+                        if (state === 'idle') prefillInput();
+                    }
                 };
                 step();
+            }
+
+            /** EDIT puts a line in the input box; AUTO offers the next line number. */
+            function prefillInput() {
+                if (basic.prefill) {
+                    cmd.value = basic.prefill;
+                    basic.prefill = null;
+                } else if (basic.auto && !cmd.value) {
+                    cmd.value = basic.auto.next + ' ';
+                } else {
+                    return;
+                }
+                cmd.focus();
+                cmd.setSelectionRange(cmd.value.length, cmd.value.length);
             }
 
             function execute(text) {
@@ -471,6 +606,16 @@
             let historyPos = 0;
 
             cmd.addEventListener('keydown', e => {
+                // While a program runs, keystrokes feed INKEY$ and GET
+                if (basic.state === 'running' || basic.state === 'sleep' || basic.state === 'key') {
+                    const ch = e.key === 'Enter' ? '\r' : e.key.length === 1 && !e.ctrlKey && !e.metaKey ? e.key : null;
+                    if (ch !== null) {
+                        e.preventDefault();
+                        basic.provideKey(ch);
+                        pump();
+                        return;
+                    }
+                }
                 if (e.key === 'Enter') {
                     e.preventDefault();
                     const text = cmd.value;
@@ -485,6 +630,12 @@
                         if (history[history.length - 1] !== text) history.push(text);
                         historyPos = history.length;
                         execute(text);
+                        prefillInput();
+                    } else if (basic.state === 'idle' && basic.auto) {
+                        // An empty line (or just the offered number) ends AUTO
+                        cmd.value = '';
+                        basic.enter('');
+                        render();
                     }
                 } else if (e.key === 'ArrowUp' && basic.state === 'idle') {
                     e.preventDefault();
@@ -602,7 +753,7 @@
 
             const KEYS = ['PRINT', 'INPUT', 'LET', 'IF', 'THEN', 'ELSE', 'FOR', 'TO', 'STEP', 'NEXT',
                 'WHILE', 'WEND', 'GOTO', 'GOSUB', 'RETURN', 'DIM', 'REM', 'END'];
-            const COMMANDS = ['RUN', 'LIST', 'CLS', 'NEW', 'HELP', 'FILES'];
+            const COMMANDS = ['RUN', 'LIST', 'CLS', 'NEW', 'HELP', 'FILES', 'RENUM', 'AUTO'];
             const keyboard = $('keyboard');
             for (const k of KEYS) {
                 const b = document.createElement('button');
