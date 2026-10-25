@@ -1,5 +1,7 @@
 # BASIC-40 Interpreter
 
+[![test](https://github.com/cstroie/basic/actions/workflows/test.yml/badge.svg)](https://github.com/cstroie/basic/actions/workflows/test.yml)
+
 A classic 8-bit style BASIC interpreter that runs entirely in the browser. It has a 40×24 character CRT screen with green, amber and white phosphor themes. There are no dependencies and no build step.
 
 **Live demo: https://cstroie.github.io/basic/**
@@ -64,6 +66,14 @@ b.enter('FOR I=1 TO 3:PRINT I*I:NEXT');
 b.runSlice();
 console.log(b.term.lines().join('\n'));
 ```
+
+## Tests
+
+```
+node --test
+```
+
+The tests run the interpreter core under Node (version 18 or later) with no dependencies. GitHub Actions runs them on every push.
 
 ## License
 
